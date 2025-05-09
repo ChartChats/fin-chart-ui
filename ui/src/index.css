@@ -1,0 +1,314 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+@layer base {
+  :root {
+    --background: 0 0% 100%;
+    --foreground: 222.2 84% 4.9%;
+
+    --card: 0 0% 100%;
+    --card-foreground: 222.2 84% 4.9%;
+
+    --popover: 0 0% 100%;
+    --popover-foreground: 222.2 84% 4.9%;
+
+    --primary: 221.2 83.2% 53.3%;
+    --primary-foreground: 210 40% 98%;
+
+    --secondary: 210 40% 96.1%;
+    --secondary-foreground: 222.2 47.4% 11.2%;
+
+    --muted: 210 40% 96.1%;
+    --muted-foreground: 215.4 16.3% 46.9%;
+
+    --accent: 210 40% 96.1%;
+    --accent-foreground: 222.2 47.4% 11.2%;
+
+    --destructive: 0 84.2% 60.2%;
+    --destructive-foreground: 210 40% 98%;
+
+    --border: 214.3 31.8% 91.4%;
+    --input: 214.3 31.8% 91.4%;
+    --ring: 222.2 84% 4.9%;
+
+    --radius: 0.5rem;
+
+    --sidebar-background: 0 0% 98%;
+    --sidebar-foreground: 240 5.3% 26.1%;
+    --sidebar-primary: 240 5.9% 10%;
+    --sidebar-primary-foreground: 0 0% 98%;
+    --sidebar-accent: 240 4.8% 95.9%;
+    --sidebar-accent-foreground: 240 5.9% 10%;
+    --sidebar-border: 220 13% 91%;
+    --sidebar-ring: 217.2 91.2% 59.8%;
+
+    --title-bar: 220 13% 91%;
+    --title-bar-foreground: 222.2 84% 4.9%;
+  }
+
+  .dark {
+    --background: 224 71% 4%;
+    --foreground: 213 31% 91%;
+
+    --card: 224 71% 4%;
+    --card-foreground: 213 31% 91%;
+
+    --popover: 224 71% 4%;
+    --popover-foreground: 213 31% 91%;
+
+    --primary: 217.2 91.2% 59.8%;
+    --primary-foreground: 222.2 47.4% 11.2%;
+
+    --secondary: 222.2 47.4% 11.2%;
+    --secondary-foreground: 210 40% 98%;
+
+    --muted: 223 47% 11%;
+    --muted-foreground: 215.4 16.3% 56.9%;
+
+    --accent: 216 34% 17%;
+    --accent-foreground: 210 40% 98%;
+
+    --destructive: 0 62.8% 30.6%;
+    --destructive-foreground: 210 40% 98%;
+
+    --border: 217.2 32.6% 17.5%;
+    --input: 217.2 32.6% 17.5%;
+    --ring: 212.7 26.8% 83.9%;
+
+    --sidebar-background: 240 5.9% 10%;
+    --sidebar-foreground: 240 4.8% 95.9%;
+    --sidebar-primary: 224.3 76.3% 48%;
+    --sidebar-primary-foreground: 0 0% 100%;
+    --sidebar-accent: 240 3.7% 15.9%;
+    --sidebar-accent-foreground: 240 4.8% 95.9%;
+    --sidebar-border: 240 3.7% 15.9%;
+    --sidebar-ring: 217.2 91.2% 59.8%;
+
+    --title-bar: 240 3.7% 15.9%;
+    --title-bar-foreground: 213 31% 91%;
+  }
+}
+
+@layer base {
+  * {
+    @apply border-border;
+  }
+
+  body {
+    @apply bg-background text-foreground;
+    font-feature-settings: "rlig" 1, "calt" 1;
+    margin: 0;
+    padding: 0;
+    height: 100vh;
+    width: 100vw;
+    overflow: auto;
+    background: #f8fafc;
+  }
+  
+  html, #root {
+    height: 100%;
+    width: 100%;
+    margin: 0;
+    padding: 0;
+    background: #f8fafc;
+  }
+}
+
+/* React Grid Layout styles */
+.react-grid-layout {
+  position: relative;
+  width: 100% !important;
+  height: 100% !important;
+  transition: height 200ms ease;
+  background: var(--background);
+}
+
+.react-grid-item {
+  transition: all 200ms ease;
+  transition-property: left, top, width, height;
+  width: 100%;
+}
+
+.react-grid-item.react-grid-placeholder {
+  background: #1E88E5;
+  opacity: 0.2;
+  transition-duration: 100ms;
+  z-index: 2;
+  border-radius: 4px;
+  user-select: none;
+}
+
+.react-grid-item.react-draggable-dragging {
+  transition: none;
+  z-index: 3;
+}
+
+/* Ensure the layout container grows with content */
+.layout {
+  min-height: 100%;
+  background: var(--background);
+}
+
+/* Ensure the page grows with content */
+body {
+  min-height: 100vh;
+  background: var(--background);
+  overflow-x: hidden;
+}
+
+#root {
+  min-height: 100vh;
+  background: var(--background);
+}
+
+/* Hide all resize handles while keeping functionality */
+.react-grid-item > .react-resizable-handle {
+  position: absolute;
+  width: 20px;
+  height: 20px;
+  opacity: 0; /* Make the handles invisible */
+}
+
+/* North resize handle */
+.react-grid-item > .react-resizable-handle.react-resizable-handle-n {
+  width: 100%;
+  height: 20px;
+  top: 0;
+  left: 0;
+  cursor: n-resize;
+}
+
+/* East resize handle */
+.react-grid-item > .react-resizable-handle.react-resizable-handle-e {
+  width: 20px;
+  height: 100%;
+  right: 0;
+  top: 0;
+  cursor: e-resize;
+}
+
+/* South resize handle */
+.react-grid-item > .react-resizable-handle.react-resizable-handle-s {
+  width: 100%;
+  height: 20px;
+  bottom: 0;
+  left: 0;
+  cursor: s-resize;
+}
+
+/* West resize handle */
+.react-grid-item > .react-resizable-handle.react-resizable-handle-w {
+  width: 20px;
+  height: 100%;
+  left: 0;
+  top: 0;
+  cursor: w-resize;
+}
+
+/* Northwest resize handle */
+.react-grid-item > .react-resizable-handle.react-resizable-handle-nw {
+  width: 20px;
+  height: 20px;
+  top: 0;
+  left: 0;
+  cursor: nw-resize;
+}
+
+/* Northeast resize handle */
+.react-grid-item > .react-resizable-handle.react-resizable-handle-ne {
+  width: 20px;
+  height: 20px;
+  top: 0;
+  right: 0;
+  cursor: ne-resize;
+}
+
+/* Southwest resize handle */
+.react-grid-item > .react-resizable-handle.react-resizable-handle-sw {
+  width: 20px;
+  height: 20px;
+  bottom: 0;
+  left: 0;
+  cursor: sw-resize;
+}
+
+/* Southeast resize handle */
+.react-grid-item > .react-resizable-handle.react-resizable-handle-se {
+  width: 20px;
+  height: 20px;
+  bottom: 0;
+  right: 0;
+  cursor: se-resize;
+}
+
+/* Remove resize handle visual style */
+.react-grid-item > .react-resizable-handle::after {
+  content: none; /* Remove the corner icon completely */
+}
+
+/* Improved mobile responsiveness */
+@media (max-width: 768px) {
+  .react-grid-item {
+    overflow-y: auto;
+  }
+  
+  /* Makes text areas and inputs more comfortable on mobile */
+  textarea, input {
+    font-size: 16px !important; /* Prevents zoom on iOS */
+  }
+  
+  /* Better spacing for mobile UI */
+  .p-3, .p-4 {
+    padding: 0.75rem !important;
+  }
+  
+  /* Fix button sizes for mobile */
+  .h-9 {
+    height: 2rem !important;
+  }
+  
+  /* Make headers smaller on mobile */
+  h1, h2 {
+    font-size: 1.25rem !important;
+  }
+  
+  /* Add extra bottom space for fixed/absolute elements */
+  .pb-safe {
+    padding-bottom: env(safe-area-inset-bottom, 1.5rem);
+  }
+}
+
+/* Hide scrollbar for cleaner UI */
+.hide-scrollbar::-webkit-scrollbar {
+  display: none;
+}
+
+.hide-scrollbar {
+  -ms-overflow-style: none;
+  scrollbar-width: none;
+}
+
+/* Title bar styles */
+.title-bar {
+  @apply bg-[hsl(var(--title-bar))] text-[hsl(var(--title-bar-foreground))] px-4 py-2 rounded-t-lg border-b border-border;
+  font-weight: 500;
+}
+
+/* Light theme (default) */
+.custom-tabs .ant-tabs-tab-active {
+  border: 1.5px solid #d1d5db !important;
+  border-bottom: none !important;
+}
+
+/* Dark theme support */
+.dark .custom-tabs .ant-tabs-tab-active,
+body[data-theme="dark"] .custom-tabs .ant-tabs-tab-active {
+  border: 1.5px solid #c9c7c7 !important;
+  border-bottom: none !important;
+  color: #3f3f46 !important;
+}
+
+.custom-tabs .ant-tabs-tab {
+  transition: background 0.2s, border 0.2s;
+}

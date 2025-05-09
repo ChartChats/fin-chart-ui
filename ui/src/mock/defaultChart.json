@@ -1,0 +1,24 @@
+{
+  "indicators": [
+    {
+      "name": "Bollinger Bands",
+      "forceOverlay": false,
+      "lock": false,
+      "settings": {
+        "length": 25,
+        "std": 2,
+        "mult": 1
+      }
+    }
+  ],
+  "symbol": "AAPL",
+  "exchange": "NASDQ",
+  "type": "stock",
+  "description": "Apple Inc.",
+  "ticker": "AAPL",
+  "date_from": "2023-01-01",
+  "date_to": "2023-12-31",
+  "resolution": "1D",
+  "range": "1Y",
+  "theme": "dark"
+}
