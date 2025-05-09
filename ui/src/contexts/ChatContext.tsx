@@ -6,6 +6,8 @@ export interface Chart {
   type: 'candlestick' | 'line' | 'bar' | 'area';
   symbol: string;  // Trading symbol (e.g., 'AAPL', 'BTCUSD')
   timeframe: string;  // Timeframe (e.g., '1D', '1H', '15m')
+  exchange: string;  // Exchange name (e.g., 'NASDAQ', 'NYSE')
+  description: string;  // Company/asset description
   data: any[];  // Will be replaced with TradingView data format
 }
 

@@ -31,10 +31,9 @@ export function ChartSystem() {
       title: `New Chart ${activeCharts.length + 1}`,
       symbol: 'AAPL',
       timeframe: '1D',
-      data: Array.from({ length: 20 }, (_, i) => ({
-        name: `${i+1}`,
-        value: Math.floor(Math.random() * 1000) + 500
-      }))
+      exchange: 'NASDAQ',
+      description: 'Apple Inc.',
+      data: []
     };
     addChart(newChart);
     setActiveChartId(newChart.id);
