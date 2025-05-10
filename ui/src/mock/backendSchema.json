@@ -1,0 +1,75 @@
+{
+  "symbol": "string",
+  "interval": "string",
+  "container": "string",
+  "lib_path": "string",
+  "time_frame": "string",
+  "time_zone": "string",
+  "debug": "boolean",
+  "width": "number",
+  "height": "number",
+  "locale": "string",
+  "fullscreen": "boolean",
+  "autosize": "boolean",
+  "symbol_search_request_delay": "number",
+  "auto_save_delay": "number",
+  "toolbar_bg": "string",
+  "study_count_limit": "number",
+  "studies_access": {
+    "type": "string",
+    "tools": [
+      {
+        "name": "string",
+        "grayed": "boolean"
+      }
+    ]
+  },
+  "drawings_access": {
+    "type": "string",
+    "tools": [
+      {
+        "name": "string",
+        "grayed": "boolean"
+      }
+    ]
+  },
+  "saved_data": "JSON",
+  "numeric_formatting": {
+    "field1": "string",
+    "field2": "string"
+  },
+  "custom_formatters": [ "timeFormatter", "dateFormatter", "tickMarkFormatter", "priceFormatterFactory" ],
+  "overrides": {
+    "key": "value"
+  },
+  "disabled_features": [
+    "feature_name"
+  ],
+  "enabled_features": [
+    "feature_name"
+  ],
+  "studies_overrides": {
+    "key": "value"
+  },
+  "header_widget_button_mode": "string",
+  "custom_indicators_getter": "function() { return customIndicators; }",
+  "custom_translate_function": "function(text) { return translatedText; }",
+  "custom_themes": {
+    "Dark": {},
+    "Light": {}
+  },
+  "studies_overrides_deep": {
+    "study_name": {
+      "property": "value"
+    }
+  },
+  "time_scale": {
+    "min_bar_spacing": "number"
+  },
+  "context_menu": {
+    "items": {
+      "save_chart": "boolean",
+      "reset_chart": "boolean"
+    }
+  }
+}

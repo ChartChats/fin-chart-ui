@@ -1,0 +1,88 @@
+
+#root {
+  max-width: 1280px;
+  margin: 0 auto;
+  padding: 2rem;
+  text-align: center;
+}
+
+.logo {
+  height: 6em;
+  padding: 1.5em;
+  will-change: filter;
+  transition: filter 300ms;
+}
+.logo:hover {
+  filter: drop-shadow(0 0 2em #646cffaa);
+}
+.logo.react:hover {
+  filter: drop-shadow(0 0 2em #61dafbaa);
+}
+
+@keyframes logo-spin {
+  from {
+    transform: rotate(0deg);
+  }
+  to {
+    transform: rotate(360deg);
+  }
+}
+
+@media (prefers-reduced-motion: no-preference) {
+  a:nth-of-type(2) .logo {
+    animation: logo-spin infinite 20s linear;
+  }
+}
+
+.card {
+  padding: 2em;
+}
+
+.read-the-docs {
+  color: #888;
+}
+
+/* Chat interface styles */
+:root {
+  --background-color: #ffffff;
+  --input-background: #ffffff;
+  --border-color: #e5e7eb;
+  --text-primary: #000000;
+  --text-secondary: #71717a;
+  --header-background: #f3f3f3;
+  --card-background: #ffffff;
+  --primary-color: #555555;
+  --primary-hover: #333333;
+}
+
+.dark {
+  --background-color: #1A1F2C;
+  --input-background: #2d2d2d;
+  --border-color: #3f3f46;
+  --text-primary: #ffffff;
+  --text-secondary: #a1a1aa;
+  --header-background: #333333;
+  --card-background: #1A1F2C;
+  --primary-color: #888888;
+  --primary-hover: #666666;
+}
+
+/* Ant Design Button Overrides */
+.ant-btn-primary {
+  background-color: var(--primary-color) !important;
+}
+
+.ant-btn-primary:hover {
+  background-color: var(--primary-hover) !important;
+}
+
+/* Chat components styling */
+.chat-list-container, .chat-box-container {
+  background-color: var(--card-background);
+  color: var(--text-primary);
+}
+
+.draggable-handle {
+  color: var(--text-primary);
+  font-weight: 500;
+}
