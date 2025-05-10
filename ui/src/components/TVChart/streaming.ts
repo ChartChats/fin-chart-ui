@@ -30,7 +30,7 @@ interface WebSocketMessage {
 }
 
 const socket = new WebSocket(
-  'wss://streamer.cryptocompare.com/v2?api_key=' + apiKey
+  'wss://streamer.twelvedata.com/v2?api_key=' + apiKey
 );
 const channelToSubscription = new Map<string, SubscriptionItem>();
 

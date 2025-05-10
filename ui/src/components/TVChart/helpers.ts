@@ -1,14 +1,12 @@
-// Your CryptoCompare API key
-export const apiKey = "2029fb701e55433b9e8b3f722db59df2";
 
-interface SymbolInfo {
-  short: string;
-}
+import symbolTypes from "../../mock/symbolTypes.json";
+
+// Your TwelveData API key
+export const apiKey = "2029fb701e55433b9e8b3f722db59df2";
 
 interface ParsedSymbol {
   exchange: string;
-  fromSymbol: string;
-  toSymbol: string;
+  symbol: string;
 }
 
 interface SymbolType {
@@ -28,33 +26,27 @@ interface IntervalMap {
   [key: string]: string;
 }
 
-// Makes requests to CryptoCompare API
+// Makes requests to TwelveData API
 export async function makeApiRequest(path: string): Promise<any> {
   try {
     const url = new URL(`https://api.twelvedata.com/${path}`);
-    url.searchParams.append('Authorization', apiKey)
+    url.searchParams.append('Authorization', apiKey);
     const response = await fetch(url.toString());
     return response.json();
   } catch (error: any) {
-    throw new Error(`CryptoCompare request error: ${error.status}`);
+    throw new Error(`TwelveData request error: ${error.status}`);
   }
 }
 
 // Generates a symbol ID from a pair of the coins
-export function generateSymbol(exchange: string, fromSymbol: string, toSymbol: string): SymbolInfo {
-  const short = `${fromSymbol}/${toSymbol}`;
-  return {
-    short,
-  };
+export function generateSymbol(exchange: string, symbol: string): string {
+  return `${exchange}:${symbol}`;
 }
 
 // Returns all parts of the symbol
-export function parseFullSymbol(fullSymbol: string): ParsedSymbol | null {
-  const match = fullSymbol.match(/^(\w+):(\w+)\/(\w+)$/);
-  if (!match) {
-    return null;
-  }
-  return { exchange: match[1], fromSymbol: match[2], toSymbol: match[3] };
+export function parseFullSymbol(fullSymbol: string): ParsedSymbol {
+  const match = fullSymbol.match(/^(\w+):(\w+)$/);
+  return match ? { exchange: match[1], symbol: match[2] } : null;
 }
 
 export function getNextDailyBarTime(barTime: number): number {
@@ -67,28 +59,7 @@ export function getNextDailyBarTime(barTime: number): number {
 export const configurationData: ConfigurationData = {
   // Represents the resolutions for bars supported by your datafeed
   supported_resolutions: ["1", "5", "15", "30", "60", "D", "W", "M"],
-  symbols_types: [
-    {
-      name: 'All',
-      value: 'all'
-    },
-    {
-      name: 'Crypto',
-      value: 'crypto'
-    },
-    {
-      name: 'Forex',
-      value: 'forex'
-    },
-    {
-      name: 'Stock',
-      value: 'stock'
-    },
-    {
-      name: 'Index',
-      value: 'index'
-    }
-  ],
+  symbols_types: symbolTypes,
   supports_marks: false,
   supports_timescale_marks: false,
   supports_time: true

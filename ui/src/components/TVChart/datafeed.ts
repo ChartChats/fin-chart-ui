@@ -54,6 +54,21 @@ interface DatafeedProps {
   theme: string;
 }
 
+interface SymbolItem {
+  symbol: string;
+  instrument_name: string;
+  exchange: string;
+  instrument_type: string;
+}
+
+interface NewSymbol {
+  symbol: string;
+  description: string;
+  exchange: string;
+  ticker: string;
+  type: string;
+}
+
 // Global cache to store data for each symbol and resolution
 const dataCache = new Map<string, Bar[]>();
 const lastBarsCache = new Map<string, Bar>();
@@ -89,66 +104,84 @@ export default class Datafeed {
     setTimeout(() => callback(configurationData), 0);
   };
   
-  searchSymbols = async (
-    userInput: string,
-    exchange: string,
-    symbolType: string,
-    onResultReadyCallback: (symbols: any[]) => void
-  ): Promise<void> => {
+  searchSymbols = async (userInput: string, exchange: string, symbolType: string, onResultReadyCallback: (symbols: any[]) => void): Promise<void> => {
     console.log('[searchSymbols]: Method call');
 
-    const searchedSymbolsData = await makeApiRequest(`symbol_search?symbol=${userInput}`);
+    const searchedSymbolsData = await makeApiRequest(`symbol_search?symbol=${userInput}&outputsize=100`);
     console.log("symbols", searchedSymbolsData);
 
-    const newSymbols = _.map(searchedSymbolsData.data, symbolItem => ({
-      symbol: symbolItem.symbol,
-      description: symbolItem.instrument_name,
-      exchange: symbolItem.exchange,
-      ticker: symbolItem.symbol,
-      type: symbolItem.instrument_type
-    }));
-    
+    const newSymbols: NewSymbol[] = (searchedSymbolsData.data as SymbolItem[])
+      .filter((item: SymbolItem) => !symbolType || symbolType === 'All' || symbolType === item.instrument_type)
+      .map((item: SymbolItem) => ({
+        symbol: `${item.exchange}:${item.symbol}`,
+        description: item.instrument_name,
+        exchange: item.exchange,
+        ticker: `${item.exchange}:${item.symbol}`,
+        type: item.instrument_type
+      }));
+
     console.log('[searchSymbols]: Returning ' + newSymbols.length + ' symbols');
     setTimeout(() => onResultReadyCallback(newSymbols), 0);
   };
 
-  resolveSymbol = async (
-    symbolName: string,
-    onSymbolResolvedCallback: (symbolInfo: SymbolInfo) => void,
-    onResolveErrorCallback: (error: string) => void,
-    extension: any
+  resolveSymbol = async (symbolName: string, onSymbolResolvedCallback: (symbolInfo: SymbolInfo) => void, onResolveErrorCallback: (error: string) => void, extension: any
   ): Promise<void> => {
     console.log('[resolveSymbol]: Method call', symbolName);
 
-    if (!this.props.symbol) {
-      console.log('[resolveSymbol]: Cannot resolve symbol', symbolName);
-      setTimeout(() => onResolveErrorCallback('Cannot resolve symbol'), 0);
-      return;
-    }
-  
-    // Symbol information object
-    const symbolInfo: SymbolInfo = {
-      ticker: this.props.symbol,
-      name: symbolName,
-      description: this.props.description,
-      type: this.props.symbol_type,
-      session: '24x7',
-      timezone: 'Etc/UTC',
-      exchange: this.props.exchange,
-      interval: this.props.interval,
-      minmov: 1,
-      pricescale: 100,
-      has_intraday: true,
-      has_daily: true,
-      has_weekly_and_monthly: true,
-      supported_resolutions: configurationData.supported_resolutions,
-      volume_precision: 2,
-      visible_plots_set: 'ohlc',
-      data_status: 'streaming'
-    };
+    try {
+      const parsedSymbol = parseFullSymbol(symbolName);
+      console.log('[resolveSymbol]: Parsed symbol', parsedSymbol);
+      
+      if (!parsedSymbol || !parsedSymbol.exchange || !parsedSymbol.symbol) {
+        throw new Error('Invalid symbol format');
+      }
 
-    console.log('[resolveSymbol]: Symbol resolved', symbolName);
-    setTimeout(() => onSymbolResolvedCallback(symbolInfo), 0);
+      const { exchange, symbol } = parsedSymbol;
+      
+      // Now get the details of the parsed symbol from the API
+      const symbolsResponse = await makeApiRequest(`symbol_search?symbol=${symbol}`);
+      
+      if (!symbolsResponse?.data) {
+        throw new Error('No data received from API');
+      }
+
+      const symbolDetails = _.find(symbolsResponse.data, (item: any) => 
+        item.exchange === exchange && item.symbol === symbol
+      );
+
+      console.log('[resolveSymbol]: Symbol details', symbolDetails);
+
+      if (!symbolDetails) {
+        throw new Error(`Symbol ${exchange}:${symbol} not found`);
+      }
+    
+      // Symbol information object
+      const symbolInfo: SymbolInfo = {
+        ticker: symbol,
+        name: `${exchange}:${symbol}`,
+        description: symbolDetails.instrument_name || `${exchange}:${symbol}`,
+        type: symbolDetails.instrument_type || 'crypto',
+        session: '24x7',
+        timezone: 'Etc/UTC',
+        exchange: exchange,
+        interval: this.props.interval,
+        minmov: 1,
+        pricescale: 100,
+        has_intraday: true,
+        has_daily: true,
+        has_weekly_and_monthly: true,
+        supported_resolutions: configurationData.supported_resolutions,
+        volume_precision: 2,
+        visible_plots_set: 'ohlc',
+        data_status: 'streaming'
+      };
+
+      console.log('[resolveSymbol]: Symbol resolved', symbolInfo);
+      setTimeout(() => onSymbolResolvedCallback(symbolInfo), 0);
+    } catch (error) {
+      console.error('[resolveSymbol]: Error', error);
+      setTimeout(() => onResolveErrorCallback(error.message || 'Cannot resolve symbol'), 0);
+    }
   };
 
   getBars = async (
@@ -174,9 +207,10 @@ export default class Datafeed {
       'M': '1month'
     };
   
-    const symbol = symbolInfo.name;
+    const parsedSymbol = parseFullSymbol(symbolInfo.name);
+    const { exchange, symbol } = parsedSymbol;
     const interval = intervalMap[resolution] || '1day';
-    const cacheKey = `${symbol}-${interval}`;
+    const cacheKey = `${exchange}:${symbol}-${interval}`;
     const fromMs = from * 1000;
     const toMs = to * 1000;
     const BARS_LIMIT = 5000;
@@ -191,7 +225,7 @@ export default class Datafeed {
       const needsNewerData = firstDataRequest || (cacheLast && toMs > cacheLast);
   
       if (needsOlderData || needsNewerData) {
-        console.log(`[getBars]: Fetching data for ${symbol}`);
+        console.log(`[getBars]: Fetching data for ${exchange}:${symbol}`);
   
         let startDate: Date, endDate: Date;
         if (needsOlderData) {
@@ -199,7 +233,7 @@ export default class Datafeed {
           startDate = new Date(endDate);
           
           // Calculate backward period based on resolution
-          const timeUnitMap: { [key: string]: { unit: string; value: number } } = {
+          const timeUnitMap: { [key: string]: { unit: moment.DurationInputArg2; value: number } } = {
             '1': { unit: 'minutes', value: BARS_LIMIT },
             '5': { unit: 'minutes', value: BARS_LIMIT * 5 },
             '15': { unit: 'minutes', value: BARS_LIMIT * 15 },
@@ -214,7 +248,7 @@ export default class Datafeed {
           startDate = moment(endDate).subtract(value, unit).toDate();
         } else {
           startDate = cacheLast ? new Date(cacheLast) : new Date(fromMs);
-          endDate = new Date(toMs);
+          endDate = new Date(startDate);
         }
   
         const url = `time_series?symbol=${symbol}&interval=${interval}` +
@@ -279,10 +313,14 @@ export default class Datafeed {
     subscriberUID: string,
     onResetCacheNeededCallback: () => void
   ): void => {
+    const parsedSymbol = parseFullSymbol(symbolInfo.name);
+    const { exchange, symbol } = parsedSymbol;
+    console.log(`[subscribeBars]: Subscribing to ${exchange}:${symbol}`);
     // subscribeOnStream(symbolInfo, resolution, onRealtimeCallback, subscriberUID, onResetCacheNeededCallback);
   };
 
   unsubscribeBars = (subscriberUID: string): void => {
+    console.log('[unsubscribeBars]: Unsubscribing from stream', subscriberUID);
     unsubscribeFromStream(subscriberUID);
   };
 }

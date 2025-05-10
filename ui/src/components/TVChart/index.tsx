@@ -1,4 +1,5 @@
-import React, { useEffect, useRef } from 'react';
+import React, { useEffect, useRef, useState } from 'react';
+import { generateSymbol } from './helpers';
 import Datafeed from './datafeed';
 import './index.css';
 import defaultChart from '../../mock/defaultChart.json';
@@ -82,7 +83,7 @@ export const TVChartContainer: React.FC<TVChartProps> = (props: DefaultChartProp
     });
 
     const widgetOptions = {
-      symbol: defaultProps.symbol,
+      symbol: generateSymbol(defaultProps.exchange, defaultProps.symbol),
       datafeed: datafeed,
       interval: defaultProps.interval,
       container: chartContainerRef.current,

@@ -12,7 +12,7 @@
     }
   ],
   "symbol": "AAPL",
-  "exchange": "NASDQ",
+  "exchange": "NASDAQ",
   "type": "stock",
   "description": "Apple Inc.",
   "ticker": "AAPL",
