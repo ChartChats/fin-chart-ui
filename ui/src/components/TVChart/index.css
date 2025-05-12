@@ -4,12 +4,13 @@
   position: relative;
   display: flex;
   flex-direction: column;
+  background: transparent;
 }
 
 .TVChartContainer {
   width: 100%;
   height: 100%;
-  min-height: 500px;
+  min-height: 300px;
   position: relative;
   display: flex;
   flex-direction: column;
@@ -19,11 +20,13 @@
 .TVChartContainer > div {
   flex: 1;
   min-height: 0;
+  width: 100% !important;
 }
 
-/* Make sure the toolbar is visible */
+/* Make sure the toolbar is visible and properly positioned */
 .TVChartContainer .tv-chart-view {
   height: 100% !important;
+  width: 100% !important;
 }
 
 /* Ensure the bottom toolbar is visible */
@@ -31,21 +34,41 @@
   position: relative !important;
   bottom: 0 !important;
   z-index: 100 !important;
+  width: 100% !important;
 }
 
 /* Make sure the chart area is properly sized */
 .TVChartContainer .chart-container {
   height: calc(100% - 40px) !important; /* Adjust for toolbar height */
+  width: 100% !important;
 }
 
 /* Ensure the chart is visible */
 .TVChartContainer .chart-markup-table {
+  width: 100% !important;
   height: 100% !important;
 }
 
 /* Make sure the chart controls are visible */
 .TVChartContainer .chart-controls {
   z-index: 100 !important;
+}
+
+/* Clean up chart UI */
+.TVChartContainer .chart-toolbar {
+  background: transparent !important;
+  border: none !important;
+  width: 100% !important;
+  position: relative !important;
+  left: 0 !important;
+}
+
+.TVChartContainer .chart-toolbar-text {
+  display: none !important;
+}
+
+.TVChartContainer .group-2JyOhh7Z {
+  display: none !important;
 }
 
 /* Theme-specific styles with increased specificity */
@@ -80,4 +103,17 @@
 
 .TVChartContainer[data-theme="dark"] .tv-chart-view__bottom-toolbar {
   background-color: #131722 !important;
+}
+
+/* Improve resize performance and disable interactions */
+.resizing * {
+  pointer-events: none !important;
+  user-select: none !important;
+  cursor: col-resize !important;
+}
+
+/* Hide chart elements during resize */
+.resizing .chart-toolbar,
+.resizing .chart-controls {
+  opacity: 0.5;
 }

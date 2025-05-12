@@ -3,6 +3,7 @@ import { Chart, useChat } from "@/contexts/ChatContext";
 import { Tabs, Button } from "antd";
 import { ChartDisplay } from "./ChartDisplay";
 import { useIsMobile } from "@/hooks/use-mobile";
+import { cn } from "@/lib/utils";
 
 export function ChartSystem() {
   const { activeCharts, removeChart, addChart } = useChat();
@@ -11,16 +12,14 @@ export function ChartSystem() {
   );
   const isMobile = useIsMobile();
 
-  // Add chart tab when new charts are added
+  // Update active chart id when charts change
   useEffect(() => {
-    if (activeCharts.length > 0 && !activeChartId) {
-      setActiveChartId(activeCharts[0]?.id);
-    } else if (activeCharts.length === 0) {
+    if (activeCharts.length === 0) {
       setActiveChartId(null);
-    } else if (activeChartId && !activeCharts.find(chart => chart.id === activeChartId)) {
+    } else if (!activeCharts.find(chart => chart.id === activeChartId)) {
       setActiveChartId(activeCharts[0]?.id);
     }
-  }, [activeCharts, activeChartId]);
+  }, [activeCharts]); // Remove activeChartId from dependencies
 
   const activeChart = activeCharts.find(chart => chart.id === activeChartId);
   
@@ -28,7 +27,7 @@ export function ChartSystem() {
     const newChart: Chart = {
       id: `chart-${Date.now()}-${Math.random().toString(36).substr(2, 9)}`,
       type: "line" as const,
-      title: `New Chart ${activeCharts.length + 1}`,
+      title: `#${activeCharts.length + 1}`,
       symbol: 'AAPL',
       timeframe: '1D',
       exchange: 'NASDAQ',
@@ -53,7 +52,7 @@ export function ChartSystem() {
         }}
         items={activeCharts.map(chart => ({
           key: chart.id,
-          label: chart.title,
+          label: `#${activeCharts.indexOf(chart) + 1}`,
         }))}
         className="px-2 pt-2"
         style={{
