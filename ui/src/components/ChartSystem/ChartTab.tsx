@@ -17,7 +17,7 @@ export function ChartTab({ id, title, isActive, onSelect, onClose }: ChartTabPro
   return (
     <div
       className={cn(
-        "flex items-center justify-between px-2 sm:px-3 py-1 text-sm border-r border-border min-w-[80px] sm:min-w-[100px] max-w-[120px] sm:max-w-[150px] rounded-md",
+        "flex items-center px-2 sm:px-3 py-1 text-sm border-r border-border min-w-[50px] sm:min-w-[60px] max-w-[80px] sm:max-w-[100px] rounded-md",
         isActive
           ? "bg-background text-foreground border-b-2 border-b-primary"
           : "bg-muted/30 text-muted-foreground hover:bg-muted/50 cursor-pointer"
@@ -33,7 +33,7 @@ export function ChartTab({ id, title, isActive, onSelect, onClose }: ChartTabPro
           e.stopPropagation();
           onClose();
         }}
-        icon={<CloseOutlined style={{ fontSize: '12px' }} />}
+        icon={<CloseOutlined style={{ fontSize: '10px' }} />}
       />
     </div>
   );

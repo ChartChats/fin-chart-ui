@@ -1,4 +1,4 @@
-import React, { useEffect, useRef, useState } from 'react';
+import React, { useEffect, useRef, useMemo } from 'react';
 import { generateSymbol } from './helpers';
 import Datafeed from './datafeed';
 import './index.css';
@@ -52,8 +52,9 @@ function getLanguageFromURL(): string | null {
 
 export const TVChartContainer: React.FC<TVChartProps> = (props: DefaultChartProps) => {
   const chartContainerRef = useRef<HTMLDivElement>(null);
+  const widgetRef = useRef<any>(null);
 
-  const defaultProps = {
+  const defaultProps = useMemo(() => ({
     symbol: props.symbol,
     interval: props.interval,
     libraryPath: '/charting_library/',
@@ -68,7 +69,7 @@ export const TVChartContainer: React.FC<TVChartProps> = (props: DefaultChartProp
     symbol_type: defaultChart.type,
     description: defaultChart.description,
     exchange: defaultChart.exchange
-  };
+  }), [props.symbol, props.interval, props.theme]);
 
   useEffect(() => {
     if (!chartContainerRef.current) return;
@@ -123,16 +124,16 @@ export const TVChartContainer: React.FC<TVChartProps> = (props: DefaultChartProp
       autosize: defaultProps.autosize,
       studies_overrides: defaultProps.studiesOverrides,
       theme: defaultProps.theme,
-      study_count_limit: 5,
       overrides: {
         "mainSeriesProperties.candleStyle.upColor": "#26a69a",
         "mainSeriesProperties.candleStyle.downColor": "#ef5350",
         "mainSeriesProperties.candleStyle.wickUpColor": "#26a69a",
         "mainSeriesProperties.candleStyle.wickDownColor": "#ef5350",
-        "paneProperties.vertGridProperties.color": "#363c4e",
-        "paneProperties.horzGridProperties.color": "#363c4e",
-        "mainSeriesProperties.style": 1
+        "paneProperties.background": props.theme === 'dark' ? "#131722" : "#ffffff",
+        "paneProperties.vertGridProperties.color": props.theme === 'dark' ? "#363c4e" : "#f0f3fa",
+        "paneProperties.horzGridProperties.color": props.theme === 'dark' ? "#363c4e" : "#f0f3fa"
       },
+      toolbar_bg: props.theme === 'dark' ? "#131722" : "#ffffff",
       timeframes: [
         { text: "1D", resolution: "1", description: "1 Day" },
         { text: "1W", resolution: "5", description: "1 Week" },
@@ -162,6 +163,7 @@ export const TVChartContainer: React.FC<TVChartProps> = (props: DefaultChartProp
 
     const tvWidget = new window.TradingView.widget(widgetOptions);
 
+    // Cleanup on unmount
     return () => {
       if (tvWidget !== null) {
         tvWidget.remove();
