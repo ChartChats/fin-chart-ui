@@ -1,13 +1,16 @@
 import React, { useEffect, useRef, useMemo } from 'react';
+import _ from 'lodash';
 import { generateSymbol } from './helpers';
 import Datafeed from './datafeed';
 import './index.css';
 import defaultChart from '../../mock/defaultChart.json';
+import { time } from 'console';
 
 declare global {
   interface Window {
     TradingView: {
       widget: new (options: any) => {
+        [x: string]: any;
         remove: () => void;
       };
     };
@@ -49,6 +52,15 @@ function getLanguageFromURL(): string | null {
   const results = regex.exec(window.location.search);
   return results === null ? null : decodeURIComponent(results[1].replace(/\+/g, ' '));
 }
+
+const getIndicatorInputs = (tvWidget, indicatorName) => {
+  const indicatorInputs = tvWidget.getStudyInputs(indicatorName);
+  let indicatorProps = {};
+  _.forEach(indicatorInputs, (input) => {
+    indicatorProps[input.id] = input.defval;
+  });
+  return indicatorProps;
+};
 
 export const TVChartContainer: React.FC<TVChartProps> = (props: DefaultChartProps) => {
   const chartContainerRef = useRef<HTMLDivElement>(null);
@@ -162,6 +174,52 @@ export const TVChartContainer: React.FC<TVChartProps> = (props: DefaultChartProp
     };
 
     const tvWidget = new window.TradingView.widget(widgetOptions);
+
+    // for the indicators
+    tvWidget.onChartReady(async () => {
+      tvWidget.chart().createStudy("Volume", false, false, undefined, {
+        "showLabelsOnPriceScale": true
+      });
+
+      tvWidget.chart().createStudy('Relative Strength Index', false, false, {"period": "14", "overbought_level": "70", "oversold_level": "30"});
+
+      tvWidget.chart().createShape(
+          { time: 1730816449, price: 230 },
+          {
+              shape: "icon",
+              icon: 0xf0da,
+          }
+      );
+
+      tvWidget.chart().createMultipointShape(
+        [
+          { time: 1740493249, price: 247.32 },
+          { time: 1743603649, price: 224.49 },
+          // { time: 1743603649, price: 215 },
+        ],
+        {
+          shape: "trend_line"
+        }
+      );
+
+
+      tvWidget.chart().createMultipointShape(
+        [
+          { time: 1735222849, price: 261.06 },
+          { time: 1738333249, price: 247.83 },
+          { time: 1737555649, price: 219.02 },
+        ],
+        {
+          shape: "triangle"
+        }
+      );
+
+      // customScehma.py
+
+      // for the chart patterns
+      console.log("default shapes", await tvWidget.activeChart().getAllShapes());
+    });
+
 
     // Cleanup on unmount
     return () => {
