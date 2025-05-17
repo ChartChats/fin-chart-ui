@@ -1,18 +1,27 @@
 import { configureStore } from '@reduxjs/toolkit';
 import { setupListeners } from '@reduxjs/toolkit/query';
-import { api } from './api';
-import chatReducer from '../components/Chat/chatSlice';
+import { chatsApi } from './apis/chatsApis';
 
 export const store = configureStore({
   reducer: {
-    [api.reducerPath]: api.reducer,
-    chat: chatReducer,
+    [chatsApi.reducerPath]: chatsApi.reducer,
   },
-  middleware: (getDefaultMiddleware) =>
-    getDefaultMiddleware().concat(api.middleware),
+  middleware: (getDefaultMiddleware) => {
+    return getDefaultMiddleware()
+      .concat(chatsApi.middleware)
+  }
 });
 
 setupListeners(store.dispatch);
+
+export {
+  useGetChatQuery,
+  useCreateChatMutation,
+  useDeleteChatMutation,
+  useAddMessageMutation,
+  useEditChatMutation,
+  useGetChatsQuery,
+} from './apis/chatsApis';
 
 export type RootState = ReturnType<typeof store.getState>;
 export type AppDispatch = typeof store.dispatch; 

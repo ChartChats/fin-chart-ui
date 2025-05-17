@@ -1,20 +1,24 @@
 import { useState } from "react";
-import { ChatMessage as ChatMessageType, Chart, useChat } from "@/contexts/ChatContext";
 import { Button, Tooltip } from "antd";
 import { cn } from "@/lib/utils";
 import { BarChart, Edit, Copy, ThumbsUp, ThumbsDown } from "lucide-react";
 import { format } from "date-fns";
 
 interface ChatMessageProps {
-  message: ChatMessageType;
+  message: {
+    text: string;
+    timestamp: string;
+    sender: string;
+    charts?: any[];
+  };
 }
 
 export function ChatMessage({ message }: ChatMessageProps) {
-  const { addChart } = useChat();
+  // const { addChart } = useChat();
 
-  const handleAddChart = (chart: Chart) => {
-    addChart(chart);
-  };
+  // const handleAddChart = (chart: Chart) => {
+  //   addChart(chart);
+  // };
 
   const handleCopy = () => {
     navigator.clipboard.writeText(message.text);
@@ -121,7 +125,7 @@ export function ChatMessage({ message }: ChatMessageProps) {
                 type="default"
                 size="small"
                 className="text-xs flex gap-1.5 items-center h-7"
-                onClick={() => handleAddChart(chart)}
+                // onClick={() => handleAddChart(chart)}
               >
                 <BarChart className="h-3.5 w-3.5" />
                 {chart.title}

@@ -1,16 +1,25 @@
 import { useEffect, useRef } from "react";
-import { useChat } from "@/contexts/ChatContext";
 import { ChatMessage } from "./ChatMessage";
 import { ScrollArea } from "@/components/widgets/scroll-area";
+
+import {
+  useGetChatQuery,
+} from '@/store/index';
 
 interface ChatListProps {
   chatId?: string;
 }
 
 export function ChatList({ chatId }: ChatListProps) {
-  const { getMessagesForChat } = useChat();
+  // Fetch the active chat data
+  const {
+    data: chatData,
+    error: chatError,
+    isLoading: isChatLoading
+  } = useGetChatQuery(chatId, { skip: !chatId });
+
   const scrollRef = useRef<HTMLDivElement>(null);
-  const messagesForChat = getMessagesForChat(chatId);
+  const messagesForChat = chatData?.messages || [];
 
   useEffect(() => {
     if (scrollRef.current) {
@@ -27,7 +36,7 @@ export function ChatList({ chatId }: ChatListProps) {
           </div>
         ) : (
           messagesForChat.map((message) => (
-            <ChatMessage key={message.id} message={message} />
+            <ChatMessage key={ message.id } message={ message } />
           ))
         )}
       </div>

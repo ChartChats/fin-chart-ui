@@ -1,10 +1,9 @@
 import React, { useMemo } from "react";
-import { Chart } from "@/contexts/ChatContext";
 import { useTheme } from "@/contexts/ThemeContext";
 import { TVChartContainer } from "../TVChart";
 
 interface ChartDisplayProps {
-  chart: Chart;
+  chart: any;
 }
 
 export const ChartDisplay = React.memo(({ chart }: ChartDisplayProps) => {

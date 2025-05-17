@@ -1,5 +1,4 @@
 import { useState } from "react";
-import { useChat, generateMockChart } from "@/contexts/ChatContext";
 import { Button, Input, Tooltip } from "antd";
 import { PaperClipOutlined, SendOutlined, SearchOutlined, ScanOutlined } from "@ant-design/icons";
 import { useTheme } from "@/contexts/ThemeContext";
@@ -7,7 +6,7 @@ import { useTheme } from "@/contexts/ThemeContext";
 const { TextArea } = Input;
 
 export function ChatBox() {
-  const { addMessage } = useChat();
+  // const { addMessage } = useChat();
   const [input, setInput] = useState("");
   const [isScreenerMode, setIsScreenerMode] = useState(false);
   const [isSearchMode, setIsSearchMode] = useState(false);
@@ -21,18 +20,18 @@ export function ChatBox() {
   const handleSubmit = (event: React.FormEvent) => {
     event.preventDefault();
     if (input.trim() === "") return;
-    addMessage(input, "user");
+    // addMessage(input, "user");
     setTimeout(() => {
       let charts = [];
       if (isScreenerMode) {
-        charts.push(generateMockChart("bar", "Screener Results"));
+        // charts.push(generateMockChart("bar", "Screener Results"));
       } else if (isSearchMode && (input.toLowerCase().includes("stock") || input.toLowerCase().includes("market"))) {
-        charts.push(generateMockChart("line", "Market Data"));
+        // charts.push(generateMockChart("line", "Market Data"));
       } else {
-        if (input.toLowerCase().includes("line chart") || input.toLowerCase().includes("stock")) charts.push(generateMockChart("line", "Stock Price History"));
-        if (input.toLowerCase().includes("bar chart") || input.toLowerCase().includes("comparison")) charts.push(generateMockChart("bar", "Company Comparison"));
-        if (input.toLowerCase().includes("area chart") || input.toLowerCase().includes("trend")) charts.push(generateMockChart("area", "Market Trend Analysis"));
-        if (input.toLowerCase().includes("candlestick") || input.toLowerCase().includes("candle")) charts.push(generateMockChart("candlestick", "Stock Candlestick"));
+        // if (input.toLowerCase().includes("line chart") || input.toLowerCase().includes("stock")) charts.push(generateMockChart("line", "Stock Price History"));
+        // if (input.toLowerCase().includes("bar chart") || input.toLowerCase().includes("comparison")) charts.push(generateMockChart("bar", "Company Comparison"));
+        // if (input.toLowerCase().includes("area chart") || input.toLowerCase().includes("trend")) charts.push(generateMockChart("area", "Market Trend Analysis"));
+        // if (input.toLowerCase().includes("candlestick") || input.toLowerCase().includes("candle")) charts.push(generateMockChart("candlestick", "Stock Candlestick"));
       }
       let responseText = isScreenerMode 
         ? "Here are the screener results based on your criteria."
@@ -40,7 +39,7 @@ export function ChatBox() {
           ? "Here's what I found from searching the web."
           : "Here's the information you requested.";
       if (charts.length > 0) responseText += " I've also generated some charts for you to visualize the data.";
-      addMessage(responseText, "system", charts);
+      // addMessage(responseText, "system", charts);
     }, 500);
     setInput("");
     setIsScreenerMode(false);
@@ -60,11 +59,14 @@ export function ChatBox() {
   };
 
   return (
-    <form onSubmit={handleSubmit} className="w-full">
-      <div className="relative flex rounded-lg shadow-sm w-full" style={{ 
+    <form onSubmit={ handleSubmit } className="w-full">
+      <div
+        className="relative flex rounded-lg shadow-sm w-full"
+        style={ { 
         border: `1px solid ${borderColor}`,
         backgroundColor: bgColor
-      }}>
+        } }
+      >
         {(isScreenerMode || isSearchMode) && (
           <div className="absolute -top-6 left-3 text-xs" style={{ color: textColor }}>
             {isScreenerMode ? "Screener Mode" : "Web Search Mode"}

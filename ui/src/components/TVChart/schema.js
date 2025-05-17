@@ -16,4 +16,4 @@ const schema = {
   "theme": "dark",              // dark / light
   "date_from": 12344343,        // number in epoch time
   "date_to": 12344343           // number in epoch time
-}
+};
