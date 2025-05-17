@@ -29,14 +29,14 @@ export function ChatList({ chatId }: ChatListProps) {
 
   return (
     <ScrollArea className="h-full" ref={scrollRef}>
-      <div className="flex flex-col gap-6 p-4">
+      <div key={ chatId } className="flex flex-col gap-6 p-4">
         {messagesForChat.length === 0 ? (
           <div className="flex items-center justify-center h-32">
             <p className="text-muted-foreground text-sm">No messages yet - start a conversation!</p>
           </div>
         ) : (
-          messagesForChat.map((message) => (
-            <ChatMessage key={ message.id } message={ message } />
+          messagesForChat.map((message, index) => (
+            <ChatMessage key={`${chatId}-${message.id || index}`} message={message} />
           ))
         )}
       </div>

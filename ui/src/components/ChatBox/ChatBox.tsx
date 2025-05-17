@@ -1,49 +1,51 @@
 import { useState } from "react";
-import { Button, Input, Tooltip } from "antd";
+import { Button, Input, Tooltip, message } from "antd";
 import { PaperClipOutlined, SendOutlined, SearchOutlined, ScanOutlined } from "@ant-design/icons";
 import { useTheme } from "@/contexts/ThemeContext";
+import { useAddMessageMutation, useAddChartMutation } from "@/store";
 
 const { TextArea } = Input;
 
-export function ChatBox() {
-  // const { addMessage } = useChat();
+export function ChatBox({ chatId }: { chatId?: string }) {
   const [input, setInput] = useState("");
   const [isScreenerMode, setIsScreenerMode] = useState(false);
   const [isSearchMode, setIsSearchMode] = useState(false);
   const { theme } = useTheme();
+  
+  const [addMessage, { isLoading: isSendingMessage }] = useAddMessageMutation();
+  const [addChart] = useAddChartMutation();
 
   const isDarkTheme = theme === 'dark';
   const borderColor = isDarkTheme ? '#3f3f46' : '#e5e7eb';
   const bgColor = isDarkTheme ? '#27272a' : '#f9fafb';
   const textColor = isDarkTheme ? '#e4e4e7' : '#374151';
 
-  const handleSubmit = (event: React.FormEvent) => {
+  const handleSubmit = async (event: React.FormEvent) => {
     event.preventDefault();
-    if (input.trim() === "") return;
-    // addMessage(input, "user");
-    setTimeout(() => {
-      let charts = [];
-      if (isScreenerMode) {
-        // charts.push(generateMockChart("bar", "Screener Results"));
-      } else if (isSearchMode && (input.toLowerCase().includes("stock") || input.toLowerCase().includes("market"))) {
-        // charts.push(generateMockChart("line", "Market Data"));
-      } else {
-        // if (input.toLowerCase().includes("line chart") || input.toLowerCase().includes("stock")) charts.push(generateMockChart("line", "Stock Price History"));
-        // if (input.toLowerCase().includes("bar chart") || input.toLowerCase().includes("comparison")) charts.push(generateMockChart("bar", "Company Comparison"));
-        // if (input.toLowerCase().includes("area chart") || input.toLowerCase().includes("trend")) charts.push(generateMockChart("area", "Market Trend Analysis"));
-        // if (input.toLowerCase().includes("candlestick") || input.toLowerCase().includes("candle")) charts.push(generateMockChart("candlestick", "Stock Candlestick"));
-      }
-      let responseText = isScreenerMode 
-        ? "Here are the screener results based on your criteria."
-        : isSearchMode 
-          ? "Here's what I found from searching the web."
-          : "Here's the information you requested.";
-      if (charts.length > 0) responseText += " I've also generated some charts for you to visualize the data.";
-      // addMessage(responseText, "system", charts);
-    }, 500);
-    setInput("");
-    setIsScreenerMode(false);
-    setIsSearchMode(false);
+    if (input.trim() === "" || !chatId) return;
+    
+    try {
+      console.log("Sending message:", input, "to chat:", chatId);
+      
+      // Send the message to the chat API - this will handle both adding the message
+      // and processing chart actions via the onQueryStarted handler in chatsApis.ts
+      const response = await addMessage({ 
+        chatId, 
+        message: input 
+      }).unwrap();
+      
+      console.log("Chat response:", response);
+      
+      // The chart creation is now handled in the onQueryStarted handler in chatsApis.ts
+      // No need to call processQuestion or manually create charts here
+      
+      setInput("");
+      setIsScreenerMode(false);
+      setIsSearchMode(false);
+    } catch (error) {
+      message.error('Failed to process your question. Please try again.');
+      console.error('Error processing question:', error);
+    }
   };
 
   const handleKeyDown = (e: React.KeyboardEvent<HTMLTextAreaElement>) => {
@@ -59,13 +61,13 @@ export function ChatBox() {
   };
 
   return (
-    <form onSubmit={ handleSubmit } className="w-full">
+    <form onSubmit={handleSubmit} className="w-full">
       <div
         className="relative flex rounded-lg shadow-sm w-full"
-        style={ { 
-        border: `1px solid ${borderColor}`,
-        backgroundColor: bgColor
-        } }
+        style={{ 
+          border: `1px solid ${borderColor}`,
+          backgroundColor: bgColor
+        }}
       >
         {(isScreenerMode || isSearchMode) && (
           <div className="absolute -top-6 left-3 text-xs" style={{ color: textColor }}>
@@ -104,6 +106,7 @@ export function ChatBox() {
           autoSize={{ minRows: 1, maxRows: 6 }}
           className="flex-1 !border-none !shadow-none !bg-transparent !py-2"
           style={{ color: textColor }}
+          disabled={isSendingMessage}
         />
         <div className="flex items-center px-3 py-2 gap-2">
           <Tooltip title="Attach files">
@@ -120,7 +123,8 @@ export function ChatBox() {
               shape="circle" 
               icon={<SendOutlined />} 
               onClick={handleSubmit}
-              disabled={input.trim() === ""}
+              disabled={input.trim() === "" || isSendingMessage}
+              loading={isSendingMessage}
             />
           </Tooltip>
         </div>

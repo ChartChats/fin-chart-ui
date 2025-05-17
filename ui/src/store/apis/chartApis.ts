@@ -12,49 +12,84 @@ export interface ChartData {
   exchange: string;
   description: string;
   data: any[];
-}
-
-export interface PlotIndicatorPayload {
-  action_type: 'plot_indicator';
-  ticker: string;
-  from_date: string;
-  to_date: string;
-  interval: string;
-  exchange: string;
-  description: string;
-  indicators: {
+  indicators?: Array<{
     name: string;
     value: string;
     properties: Record<string, string>;
-  }[];
+  }>;
 }
 
-const chartApi = createApi({
-  reducerPath: 'chart',
+export interface ChartActionResponse {
+  action_type: string;
+  message?: string;
+  ticker?: string;
+  from_date?: string;
+  to_date?: string;
+  interval?: string;
+  exchange?: string;
+  description?: string;
+  data?: any[];
+  indicators?: Array<{
+    name: string;
+    value: string;
+    properties: Record<string, string>;
+  }>;
+}
+
+// Default chart configuration
+export const DEFAULT_CHART_CONFIG = {
+  type: 'line' as const,
+  title: 'New Chart',
+  symbol: '',
+  timeframe: 'daily',
+  exchange: '',
+  description: 'Empty chart',
+  data: []
+};
+
+export const chartApi = createApi({
+  reducerPath: 'chartApi',
   baseQuery: fetchBaseQuery({
     baseUrl: '/api',
   }),
-  tagTypes: ['Chart'],
+  tagTypes: ['Charts'],
   endpoints: (builder) => ({
-    getCharts: builder.query({
-      query: () => '/charts',
-      providesTags: ['Chart']
+    getCharts: builder.query<ChartData[], void>({
+      query: () => '/chart',
+      providesTags: ['Charts']
     }),
-    plotIndicator: builder.mutation({
-      query: (payload: PlotIndicatorPayload) => ({
-        url: '/charts/plot-indicator',
+    
+    addChart: builder.mutation<ChartData, Partial<ChartData>>({
+      query: (chart = {}) => ({
+        url: '/chart',
         method: 'POST',
-        body: payload,
+        body: { ...DEFAULT_CHART_CONFIG, ...chart }
       }),
-      // This would normally invalidate the charts query to refresh the list
-      invalidatesTags: ['Chart']
+      invalidatesTags: ['Charts']
     }),
+    
+    removeChart: builder.mutation<void, string>({
+      query: (id) => ({
+        url: `/chart/${id}`,
+        method: 'DELETE'
+      }),
+      invalidatesTags: ['Charts']
+    }),
+    
+    updateChart: builder.mutation<ChartData, { id: string, data: Partial<ChartData> }>({
+      query: ({ id, data }) => ({
+        url: `/chart/${id}`,
+        method: 'PATCH',
+        body: data
+      }),
+      invalidatesTags: ['Charts']
+    })
   }),
 });
 
 export const {
   useGetChartsQuery,
-  usePlotIndicatorMutation,
+  useAddChartMutation,
+  useRemoveChartMutation,
+  useUpdateChartMutation
 } = chartApi;
-
-export { chartApi };

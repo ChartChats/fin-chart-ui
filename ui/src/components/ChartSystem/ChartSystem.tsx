@@ -3,9 +3,14 @@ import { Tabs, Button } from "antd";
 import { ChartDisplay } from "./ChartDisplay";
 import { useIsMobile } from "@/hooks/use-mobile";
 import { cn } from "@/lib/utils";
+import { useGetChartsQuery, useAddChartMutation, useRemoveChartMutation } from "@/store";
+import { ChartData } from "@/store/apis/chartApis";
 
 export function ChartSystem() {
-  const { activeCharts, removeChart, addChart } = useChat();
+  const { data: activeCharts = [], isLoading } = useGetChartsQuery();
+  const [removeChart] = useRemoveChartMutation();
+  const [addChart] = useAddChartMutation();
+  
   const [activeChartId, setActiveChartId] = useState<string | null>(
     activeCharts.length > 0 ? activeCharts[0]?.id : null
   );
@@ -18,14 +23,14 @@ export function ChartSystem() {
     } else if (!activeCharts.find(chart => chart.id === activeChartId)) {
       setActiveChartId(activeCharts[0]?.id);
     }
-  }, [activeCharts]); // Remove activeChartId from dependencies
+  }, [activeCharts, activeChartId]);
 
   const activeChart = activeCharts.find(chart => chart.id === activeChartId);
   
-  const handleAddNewChart = () => {
-    const newChart: any = {
+  const handleAddNewChart = async () => {
+    const newChart: Partial<ChartData> = {
       id: `chart-${Date.now()}-${Math.random().toString(36).substr(2, 9)}`,
-      type: "line" as const,
+      type: "line",
       title: `#${activeCharts.length + 1}`,
       symbol: 'AAPL',
       timeframe: '1D',
@@ -33,8 +38,21 @@ export function ChartSystem() {
       description: 'Apple Inc.',
       data: []
     };
-    addChart(newChart);
-    setActiveChartId(newChart.id);
+    
+    try {
+      const result = await addChart(newChart).unwrap();
+      setActiveChartId(result.id);
+    } catch (error) {
+      console.error('Failed to add chart:', error);
+    }
+  };
+
+  const handleRemoveChart = async (chartId: string) => {
+    try {
+      await removeChart(chartId).unwrap();
+    } catch (error) {
+      console.error('Failed to remove chart:', error);
+    }
   };
 
   return (
@@ -46,12 +64,12 @@ export function ChartSystem() {
         onEdit={(targetKey, action) => {
           if (action === 'add') handleAddNewChart();
           if (action === 'remove' && typeof targetKey === 'string') {
-            removeChart(targetKey);
+            handleRemoveChart(targetKey);
           }
         }}
         items={activeCharts.map(chart => ({
           key: chart.id,
-          label: `#${activeCharts.indexOf(chart) + 1}`,
+          label: chart.title || `#${activeCharts.indexOf(chart) + 1}`,
         }))}
         className="px-2 pt-2"
         style={{
@@ -85,12 +103,4 @@ export function ChartSystem() {
       </div>
     </div>
   );
-}
-
-function useChat(): { activeCharts: any; removeChart: any; addChart: any; } {
-  return {
-    activeCharts: [],
-    removeChart: (id: string) => { /* remove chart logic */ },
-    addChart: (chart: any) => { /* add chart logic */ }
-  }
 }

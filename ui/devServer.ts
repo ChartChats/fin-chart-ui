@@ -1,6 +1,40 @@
-import fs from 'fs';
 import express from 'express';
 import path from 'path';
+import fs from 'fs';
+
+// Mock data for chart responses
+const generateMockChartData = (symbol: string) => {
+  const now = Math.floor(Date.now() / 1000);
+  const oneYearAgo = now - 365 * 24 * 60 * 60;
+
+  return {
+    action_type: "plot_indicator",
+    ticker: symbol,
+    from_date: oneYearAgo.toString(),
+    to_date: now.toString(),
+    interval: "1D",
+    exchange: "NASDAQ",
+    description: `${symbol} Inc.`,
+    indicators: [
+      {
+        name: "Relative Strength Index",
+        value: "rsi",
+        properties: {
+          period: "14",
+          overbought_level: "70",
+          oversold_level: "30"
+        }
+      }
+    ]
+  };
+};
+
+const generateLLMResponse = (message: string) => {
+  return {
+    action_type: "llm_response",
+    message
+  };
+};
 
 export const mockApiPlugin = () => {
   return {
@@ -22,8 +56,65 @@ export const mockApiPlugin = () => {
       });
 
       const mockFile = path.resolve(__dirname, 'src/mock');
+      
+      // Create charts directory if it doesn't exist
+      const chartsDir = path.join(mockFile, 'charts');
+      if (!fs.existsSync(chartsDir)) {
+        fs.mkdirSync(chartsDir, { recursive: true });
+      }
 
-      // get all chats and their ids
+      // Chart API routes
+      app.get('/api/chart', (req, res) => {
+        if (!fs.existsSync(chartsDir)) {
+          return res.status(200).json([]);
+        }
+        
+        const chartFiles = fs.readdirSync(chartsDir);
+        const charts = chartFiles.map(file => {
+          const filePath = path.join(chartsDir, file);
+          const data = fs.readFileSync(filePath, 'utf-8');
+          return JSON.parse(data);
+        });
+        res.status(200).json(charts);
+      });
+      
+      app.post('/api/chart', (req, res) => {
+        const chart = req.body;
+        const chartId = chart.id || `chart-${Date.now()}-${Math.random().toString(36).substring(2, 9)}`;
+        chart.id = chartId;
+        
+        const chartFilePath = path.join(chartsDir, `${chartId}.json`);
+        fs.writeFileSync(chartFilePath, JSON.stringify(chart, null, 2));
+        res.status(201).json(chart);
+      });
+      
+      app.patch('/api/chart/:id', (req, res) => {
+        const chartId = req.params.id;
+        const chartFilePath = path.join(chartsDir, `${chartId}.json`);
+        
+        if (!fs.existsSync(chartFilePath)) {
+          return res.status(404).json({ error: 'Chart not found' });
+        }
+        
+        const existingChart = JSON.parse(fs.readFileSync(chartFilePath, 'utf-8'));
+        const updatedChart = { ...existingChart, ...req.body.data };
+        
+        fs.writeFileSync(chartFilePath, JSON.stringify(updatedChart, null, 2));
+        res.status(200).json(updatedChart);
+      });
+      
+      app.delete('/api/chart/:id', (req, res) => {
+        const chartId = req.params.id;
+        const chartFilePath = path.join(chartsDir, `${chartId}.json`);
+        
+        if (fs.existsSync(chartFilePath)) {
+          fs.unlinkSync(chartFilePath);
+        }
+        
+        res.status(200).json({ message: 'Chart deleted' });
+      });
+
+      // Chat API routes
       app.get('/api/chat/chats', (req, res) => {
         const chatFiles = fs.readdirSync(path.join(mockFile, 'chats'));
         const chats = chatFiles.map(file => {
@@ -39,71 +130,66 @@ export const mockApiPlugin = () => {
         res.status(200).json(chats);
       });
 
-
-      // createChat
       app.post('/api/chat/create', (req, res) => {
         const uuid = Math.random().toString(36).substring(2) + Date.now().toString(36);
         const chatFilePath = path.join(mockFile, 'chats', `chat-${uuid}.json`);
-
-        console.log('Creating chat file:', chatFilePath);
-
         fs.writeFileSync(chatFilePath, JSON.stringify({
           id: uuid,
           messages: []
         }, null, 2));
-
-        // Return the new chat ID
-        setTimeout(() => {
-          res.status(201).json({ id: uuid });
-        }, 1000);
+        res.status(201).json({ id: uuid });
       });
 
-
-      // getChat
       app.get('/api/chat', (req, res) => {
         const chatId = req.query.chat_id;
         const dataFilePath = path.join(mockFile, 'chats', `chat-${chatId}.json`);
-
         const data = fs.readFileSync(dataFilePath, 'utf-8');
-
-        setTimeout(() => {
-          res.status(200).json(data);
-        }, 1000);
+        res.status(200).json(JSON.parse(data));
       });
 
-
-      // add message
       app.post('/api/chat/:id/message', (req, res) => {
         const chatId = req.params.id;
         const message = req.body;
-
         const dataFilePath = path.join(mockFile, 'chats', `chat-${chatId}.json`);
-
         const data = JSON.parse(fs.readFileSync(dataFilePath, 'utf-8'));
+        
+        // Add the user message
         data.messages.push(message);
 
-        fs.writeFileSync(dataFilePath, JSON.stringify(data, null, 2));
+        // Generate mock responses based on the message content
+        if (
+          message.content.toLowerCase().includes('chart') || 
+          message.content.toLowerCase().includes('indicator')
+        ) {
+          // Add chart data response
+          data.messages.push({
+            role: 'assistant',
+            content: JSON.stringify(generateMockChartData('AAPL'))
+          });
 
-        setTimeout(() => {
-          res.status(200).json(data);
-        }, 1000);
+          // Add LLM response
+          data.messages.push({
+            role: 'assistant',
+            content: JSON.stringify(generateLLMResponse(
+              "I've displayed the RSI indicator chart for Apple (AAPL). If you have any more questions or need further analysis, feel free to ask!"
+            ))
+          });
+        }
+
+        fs.writeFileSync(dataFilePath, JSON.stringify(data, null, 2));
+        res.status(200).json(data);
       });
 
-      
-      // delete chat
       app.delete('/api/chat/:id', (req, res) => {
         const chatId = req.params.id;
         const dataFilePath = path.join(mockFile, 'chats', `chat-${chatId}.json`);
-
         if (fs.existsSync(dataFilePath)) {
           fs.unlinkSync(dataFilePath);
         }
-
-        setTimeout(() => {
-          res.status(200).json({ message: 'Chat deleted' });
-        }, 1000);
+        res.status(200).json({ message: 'Chat deleted' });
       });
 
+      // Use the Express app as middleware
       server.middlewares.use(app);
     }
   };

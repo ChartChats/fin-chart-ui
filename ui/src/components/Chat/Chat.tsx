@@ -77,7 +77,7 @@ const Chat = (props: ChatWidgetProps) => {
       // 1. There are no chats
       // 2. We're not already creating one
       // 3. We haven't already successfully created one
-      createChat({});
+      createChat();
     }
   }, [chatsData, isChatsLoaded, isCreating, isCreateSuccess]);
   
@@ -117,7 +117,7 @@ const Chat = (props: ChatWidgetProps) => {
         activeKey={ activeChatId || undefined }
         onChange={ id => switchChat(id) }
         onEdit={ (targetKey, action) => {
-          if (action === 'add') createChat({});
+          if (action === 'add') createChat();
           if (action === 'remove' && typeof targetKey === 'string') {
             deleteChat(targetKey);
             // If we're deleting the active chat, handle it in the effect
@@ -165,7 +165,7 @@ const Chat = (props: ChatWidgetProps) => {
               <div
                 className="flex-shrink-0 p-4 border-t"
                 style={ { borderColor } } >
-                <ChatBox />
+                <ChatBox chatId={activeChatId || undefined} />
               </div>
             </>
           ) : (

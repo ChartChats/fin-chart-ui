@@ -6,9 +6,10 @@ import { format } from "date-fns";
 
 interface ChatMessageProps {
   message: {
-    text: string;
+    content: string;
     timestamp: string;
-    sender: string;
+    role: string;
+    id: string;
     charts?: any[];
   };
 }
@@ -21,7 +22,7 @@ export function ChatMessage({ message }: ChatMessageProps) {
   // };
 
   const handleCopy = () => {
-    navigator.clipboard.writeText(message.text);
+    navigator.clipboard.writeText(message.content);
   };
 
   const handleEdit = () => {
@@ -32,23 +33,31 @@ export function ChatMessage({ message }: ChatMessageProps) {
     // TODO: Implement feedback functionality
   };
 
-  const formattedTime = format(new Date(message.timestamp), 'HH:mm');
+  // Safely format the timestamp with a fallback
+  const formattedTime = (() => {
+    try {
+      return message.timestamp ? format(new Date(message.timestamp), 'HH:mm') : '';
+    } catch (error) {
+      console.error('Invalid timestamp:', message.timestamp);
+      return '';
+    }
+  })();
 
   return (
     <div
       className={cn(
         "group flex px-4 py-2 transition-colors",
-        message.sender === "user" ? "justify-end" : "justify-start"
+        message.role === "user" ? "justify-end" : "justify-start"
       )}
     >
       <div className={cn(
         "flex flex-col max-w-[80%] space-y-2 relative",
-        message.sender === "user" ? "items-end" : "items-start"
+        message.role === "user" ? "items-end" : "items-start"
       )}>
         <div className="flex items-center gap-2">
           <span className="text-xs text-muted-foreground">{formattedTime}</span>
           <div className="chat-message-actions">
-            {message.sender === "user" ? (
+            {message.role === "user" ? (
               <>
                 <Tooltip title="Edit message">
                   <Button 
@@ -110,11 +119,11 @@ export function ChatMessage({ message }: ChatMessageProps) {
         
         <div className={cn(
           "rounded-lg px-4 py-2",
-          message.sender === "user" 
+          message.role === "user" 
             ? "bg-primary text-primary-foreground ml-4" 
             : "bg-muted text-foreground mr-4"
         )}>
-          {message.text}
+          {message.content}
         </div>
 
         {message.charts && message.charts.length > 0 && (
