@@ -59,11 +59,14 @@ export const chartApi = createApi({
       providesTags: ['Charts']
     }),
     
-    addChart: builder.mutation<ChartData, Partial<ChartData>>({
-      query: (chart = {}) => ({
+    addChart: builder.mutation<ChartData, ChartData>({
+      query: (chart) => ({
         url: '/chart',
         method: 'POST',
-        body: { ...DEFAULT_CHART_CONFIG, ...chart }
+        body: {
+          ...DEFAULT_CHART_CONFIG,
+          ...chart
+        }
       }),
       invalidatesTags: ['Charts']
     }),

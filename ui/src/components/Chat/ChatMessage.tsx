@@ -1,4 +1,5 @@
-import { useState } from "react";
+import React, { useState } from "react";
+import _ from "lodash";
 import { Button, Tooltip } from "antd";
 import { cn } from "@/lib/utils";
 import { BarChart, Edit, Copy, ThumbsUp, ThumbsDown } from "lucide-react";
@@ -7,22 +8,14 @@ import { format } from "date-fns";
 interface ChatMessageProps {
   message: {
     content: string;
-    timestamp: string;
     role: string;
-    id: string;
-    charts?: any[];
+    timestamp: string;
   };
 }
 
 export function ChatMessage({ message }: ChatMessageProps) {
-  // const { addChart } = useChat();
-
-  // const handleAddChart = (chart: Chart) => {
-  //   addChart(chart);
-  // };
-
   const handleCopy = () => {
-    navigator.clipboard.writeText(message.content);
+    navigator.clipboard.writeText(JSON.parse(message.content).message);
   };
 
   const handleEdit = () => {
@@ -41,7 +34,7 @@ export function ChatMessage({ message }: ChatMessageProps) {
       console.error('Invalid timestamp:', message.timestamp);
       return '';
     }
-  })();
+  });
 
   return (
     <div
@@ -55,7 +48,7 @@ export function ChatMessage({ message }: ChatMessageProps) {
         message.role === "user" ? "items-end" : "items-start"
       )}>
         <div className="flex items-center gap-2">
-          <span className="text-xs text-muted-foreground">{formattedTime}</span>
+          <span className="text-xs text-muted-foreground">{ formattedTime() }</span>
           <div className="chat-message-actions">
             {message.role === "user" ? (
               <>
@@ -97,7 +90,7 @@ export function ChatMessage({ message }: ChatMessageProps) {
                     type="text"
                     size="small"
                     className="message-action-btn thumbs-down h-6 w-6 p-0 flex items-center justify-center"
-                    onClick={() => handleFeedback(false)}
+                    onClick={ () => handleFeedback(false) }
                   >
                     <ThumbsDown className="h-3.5 w-3.5" />
                   </Button>
@@ -107,7 +100,7 @@ export function ChatMessage({ message }: ChatMessageProps) {
                     type="text"
                     size="small"
                     className="message-action-btn copy-btn h-6 w-6 p-0 flex items-center justify-center"
-                    onClick={handleCopy}
+                    onClick={ handleCopy }
                   >
                     <Copy className="h-3.5 w-3.5" />
                   </Button>
@@ -116,32 +109,14 @@ export function ChatMessage({ message }: ChatMessageProps) {
             )}
           </div>
         </div>
-        
-        <div className={cn(
-          "rounded-lg px-4 py-2",
-          message.role === "user" 
-            ? "bg-primary text-primary-foreground ml-4" 
-            : "bg-muted text-foreground mr-4"
-        )}>
-          {message.content}
+        <div
+          className={ cn(
+            "rounded-lg px-4 py-2",
+            message.role === "user" ? "bg-primary text-primary-foreground ml-4" : "bg-muted text-foreground mr-4"
+          ) }
+        >
+          { message.role === "user" ? message.content : JSON.parse(message.content).message }
         </div>
-
-        {message.charts && message.charts.length > 0 && (
-          <div className="flex flex-wrap gap-2 mt-2">
-            {message.charts.map((chart) => (
-              <Button
-                key={chart.id}
-                type="default"
-                size="small"
-                className="text-xs flex gap-1.5 items-center h-7"
-                // onClick={() => handleAddChart(chart)}
-              >
-                <BarChart className="h-3.5 w-3.5" />
-                {chart.title}
-              </Button>
-            ))}
-          </div>
-        )}
       </div>
     </div>
   );

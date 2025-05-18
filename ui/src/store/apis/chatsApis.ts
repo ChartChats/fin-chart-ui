@@ -1,28 +1,20 @@
+import _ from 'lodash';
+
 import {
   createApi,
   fetchBaseQuery,
 } from "@reduxjs/toolkit/query/react";
-import { ChartActionResponse, chartApi } from "./chartApis";
 
-export interface Message {
-  id: string;
-  content: string;
-  role: 'user' | 'system';
-  timestamp: string;
-  charts?: any[];
-}
+import {
+  ChartActionResponse,
+  chartApi
+} from "./chartApis";
 
-export interface Chat {
-  id: string;
-  title: string;
-  messages: Message[];
-  createdAt: string;
-  updatedAt: string;
-}
-
-export interface ChatResponse {
-  messages: Message[];
-}
+import {
+  Message,
+  Chat,
+  ChatResponse
+} from "@/interfaces/chatInterfaces";
 
 const chatsApi = createApi({
   reducerPath: 'chat',
@@ -95,46 +87,53 @@ const chatsApi = createApi({
           // Wait for the response which includes both user message and LLM responses
           const { data: chatResponse } = await queryFulfilled;
           
-          // Process assistant messages to handle chart actions
-          if (chatResponse.messages) {
-            for (const message of chatResponse.messages) {
-              if (message.role === 'assistant') {
+          // Process system messages to handle chart actions
+          if (_.size(chatResponse.messages) > 0) {
+            _.forEach(chatResponse.messages, async (message) => {
+              if (message.role === 'system') {
                 try {
                   // Try to parse the content as JSON
                   const responseData = JSON.parse(message.content) as ChartActionResponse;
                   
                   // Handle different action types
-                  if (responseData.action_type === 'plot_indicator') {
-                    // Create a chart when action_type is plot_indicator
-                    const chartData = {
-                      id: `chart-${Date.now()}-${Math.random().toString(36).substr(2, 9)}`,
-                      type: 'line', // Default, can be overridden
-                      title: responseData.ticker || 'Chart',
-                      symbol: responseData.ticker || '',
-                      timeframe: responseData.interval || 'daily',
-                      exchange: responseData.exchange || '',
-                      description: responseData.description || '',
-                      data: responseData.data || [],
-                      indicators: responseData.indicators || []
-                    };
-                    
-                    // Create the chart
-                    await dispatch(chartApi.endpoints.addChart.initiate(chartData));
+                  switch (responseData.action_type) {
+                    case 'plot_indicator':
+                      // Create a chart when action_type is plot_indicator
+                      const chartData = {
+                        id: `chart-${Date.now()}-${Math.random().toString(36).substr(2, 9)}`,
+                        type: 'line' as const,
+                        title: responseData.ticker || 'Chart',
+                        symbol: responseData.ticker || '',
+                        timeframe: responseData.interval || 'daily',
+                        exchange: responseData.exchange || '',
+                        description: responseData.description || '',
+                        data: responseData.data || [],
+                        indicators: responseData.indicators || []
+                      };
+
+                      // Create the chart
+                      await dispatch(chartApi.endpoints.addChart.initiate(chartData));
+                      break;
+                    case 'chat_response':
+                      // For llm_response, we don't need to do anything special
+                      console.log('get Chat responses:', responseData.message);
+                      break;
+                    default:
+                      break;
                   }
-                  // For llm_response, we don't need to do anything special
                 } catch (e) {
                   // Not JSON or not a chart action, ignore
                   console.log('Message is not a valid chart action:', e);
                 }
               }
-            }
+            })
           }
         } catch (error) {
           console.error('Error processing message:', error);
         }
       },
       invalidatesTags: (result, error, { chatId }) => 
-        result ? [{ type: 'Chat', id: chatId }] : []
+        result ? [{ type: 'Chat', id: chatId }, 'Chats'] : []
     }),
   }),
 });

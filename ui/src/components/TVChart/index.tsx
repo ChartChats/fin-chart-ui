@@ -4,7 +4,8 @@ import { generateSymbol } from './helpers';
 import Datafeed from './datafeed';
 import './index.css';
 import defaultChart from '../../mock/defaultChart.json';
-import { time } from 'console';
+
+import { IndicatorProps } from '@/interfaces/chartInterfaces';
 
 declare global {
   interface Window {
@@ -21,19 +22,11 @@ interface TVChartProps {
   symbol?: string;
   interval?: string;
   theme?: string;
+  indicators?: IndicatorProps[];
 }
 
 interface DefaultChartProps {
-  indicators: {
-    name: string;
-    forceOverlay: boolean;
-    lock: boolean;
-    settings: {
-      length: number;
-      std: number;
-      mult: number;
-    };
-  }[];
+  indicators: IndicatorProps[];
   interval: string;
   symbol: string;
   exchange: string;
@@ -53,9 +46,9 @@ function getLanguageFromURL(): string | null {
   return results === null ? null : decodeURIComponent(results[1].replace(/\+/g, ' '));
 }
 
-const getIndicatorInputs = (tvWidget, indicatorName) => {
+const getIndicatorInputs = (tvWidget: any, indicatorName: string) => {
   const indicatorInputs = tvWidget.getStudyInputs(indicatorName);
-  let indicatorProps = {};
+  let indicatorProps: { [key: string]: any } = {};
   _.forEach(indicatorInputs, (input) => {
     indicatorProps[input.id] = input.defval;
   });
@@ -175,44 +168,56 @@ export const TVChartContainer: React.FC<TVChartProps> = (props: DefaultChartProp
 
     const tvWidget = new window.TradingView.widget(widgetOptions);
 
-    // for the indicators
     tvWidget.onChartReady(async () => {
-      tvWidget.chart().createStudy("Volume", false, false, undefined, {
-        "showLabelsOnPriceScale": true
-      });
+    // for the indicators
+      // Volume indicator should be there by default
+      tvWidget.chart().createStudy("Volume", false, false, undefined, { "showLabelsOnPriceScale": true });
 
-      tvWidget.chart().createStudy('Relative Strength Index', false, false, {"period": "14", "overbought_level": "70", "oversold_level": "30"});
+      // Now plot all the indicators mentoned for this chart
+      if (_.size(props.indicators) > 0) {
+        props.indicators.forEach(indicator => {
+          tvWidget.chart().createStudy(
+            indicator.name,
+            false,
+            false,
+            indicator.properties || getIndicatorInputs(tvWidget, indicator.name),
+          );
+        });
+      }
 
-      tvWidget.chart().createShape(
-          { time: 1730816449, price: 230 },
-          {
-              shape: "icon",
-              icon: 0xf0da,
-          }
-      );
+      // Relative Strength Index
+      // tvWidget.chart().createStudy('Relative Strength Index', false, false, {"period": "14", "overbought_level": "70", "oversold_level": "30"});
 
-      tvWidget.chart().createMultipointShape(
-        [
-          { time: 1740493249, price: 247.32 },
-          { time: 1743603649, price: 224.49 },
-          // { time: 1743603649, price: 215 },
-        ],
-        {
-          shape: "trend_line"
-        }
-      );
+      // tvWidget.chart().createShape(
+      //     { time: 1730816449, price: 230 },
+      //     {
+      //         shape: "icon",
+      //         icon: 0xf0da,
+      //     }
+      // );
+
+      // tvWidget.chart().createMultipointShape(
+      //   [
+      //     { time: 1740493249, price: 247.32 },
+      //     { time: 1743603649, price: 224.49 },
+      //     // { time: 1743603649, price: 215 },
+      //   ],
+      //   {
+      //     shape: "trend_line"
+      //   }
+      // );
 
 
-      tvWidget.chart().createMultipointShape(
-        [
-          { time: 1735222849, price: 261.06 },
-          { time: 1738333249, price: 247.83 },
-          { time: 1737555649, price: 219.02 },
-        ],
-        {
-          shape: "triangle"
-        }
-      );
+      // tvWidget.chart().createMultipointShape(
+      //   [
+      //     { time: 1735222849, price: 261.06 },
+      //     { time: 1738333249, price: 247.83 },
+      //     { time: 1737555649, price: 219.02 },
+      //   ],
+      //   {
+      //     shape: "triangle"
+      //   }
+      // );
 
       // customScehma.py
 

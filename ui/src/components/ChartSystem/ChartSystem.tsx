@@ -26,9 +26,10 @@ export function ChartSystem() {
   }, [activeCharts, activeChartId]);
 
   const activeChart = activeCharts.find(chart => chart.id === activeChartId);
+  console.log('activeChart', activeChart);
   
   const handleAddNewChart = async () => {
-    const newChart: Partial<ChartData> = {
+    const newChart: ChartData = {
       id: `chart-${Date.now()}-${Math.random().toString(36).substr(2, 9)}`,
       type: "line",
       title: `#${activeCharts.length + 1}`,
@@ -83,7 +84,7 @@ export function ChartSystem() {
       />
       <div className="flex-1 overflow-hidden">
         {activeChart ? (
-          <ChartDisplay chart={activeChart} />
+          <ChartDisplay chart={ activeChart } />
         ) : (
           <div className="flex items-center justify-center h-full">
             <div className="text-center p-4">

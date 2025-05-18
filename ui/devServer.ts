@@ -1,6 +1,7 @@
 import express from 'express';
 import path from 'path';
 import fs from 'fs';
+import { v4 as uuidv4 } from "uuid";
 
 // Mock data for chart responses
 const generateMockChartData = (symbol: string) => {
@@ -57,6 +58,7 @@ export const mockApiPlugin = () => {
 
       const mockFile = path.resolve(__dirname, 'src/mock');
       
+
       // Create charts directory if it doesn't exist
       const chartsDir = path.join(mockFile, 'charts');
       if (!fs.existsSync(chartsDir)) {
@@ -114,6 +116,13 @@ export const mockApiPlugin = () => {
         res.status(200).json({ message: 'Chart deleted' });
       });
 
+
+      // Create chats directory if it doesn't exist
+      const chatsDir = path.join(mockFile, 'chats');
+      if (!fs.existsSync(chatsDir)) {
+        fs.mkdirSync(chatsDir, { recursive: true });
+      }
+
       // Chat API routes
       app.get('/api/chat/chats', (req, res) => {
         const chatFiles = fs.readdirSync(path.join(mockFile, 'chats'));
@@ -131,7 +140,7 @@ export const mockApiPlugin = () => {
       });
 
       app.post('/api/chat/create', (req, res) => {
-        const uuid = Math.random().toString(36).substring(2) + Date.now().toString(36);
+        const uuid = uuidv4();
         const chatFilePath = path.join(mockFile, 'chats', `chat-${uuid}.json`);
         fs.writeFileSync(chatFilePath, JSON.stringify({
           id: uuid,
@@ -152,32 +161,39 @@ export const mockApiPlugin = () => {
         const message = req.body;
         const dataFilePath = path.join(mockFile, 'chats', `chat-${chatId}.json`);
         const data = JSON.parse(fs.readFileSync(dataFilePath, 'utf-8'));
+
+        let serverResponse: string = '';
+        let messageData: any = {};
+        const newMessages: any = [];
         
         // Add the user message
         data.messages.push(message);
 
-        // Generate mock responses based on the message content
-        if (
-          message.content.toLowerCase().includes('chart') || 
-          message.content.toLowerCase().includes('indicator')
-        ) {
-          // Add chart data response
-          data.messages.push({
-            role: 'assistant',
-            content: JSON.stringify(generateMockChartData('AAPL'))
-          });
+        // Add chart data response
+        serverResponse = JSON.stringify(generateMockChartData('MSFT'));
+        messageData = {
+          role: 'system',
+          content: serverResponse
+        };
+        newMessages.push(messageData);
+        data.messages.push(messageData);
 
-          // Add LLM response
-          data.messages.push({
-            role: 'assistant',
-            content: JSON.stringify(generateLLMResponse(
-              "I've displayed the RSI indicator chart for Apple (AAPL). If you have any more questions or need further analysis, feel free to ask!"
-            ))
-          });
-        }
+        // Add LLM response
+        serverResponse = JSON.stringify(generateLLMResponse(
+          "I've displayed the RSI indicator chart for Microsoft (MSFT). If you have any more questions or need further analysis, feel free to ask!"
+        ));
+        messageData = {
+          role: 'system',
+          content: serverResponse
+        };
+        newMessages.push(messageData);
+        data.messages.push(messageData);
 
         fs.writeFileSync(dataFilePath, JSON.stringify(data, null, 2));
-        res.status(200).json(data);
+        res.status(200).json({
+          id: chatId,
+          messages: newMessages,
+        });
       });
 
       app.delete('/api/chat/:id', (req, res) => {
