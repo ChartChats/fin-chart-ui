@@ -6,20 +6,23 @@ import {
 } from "@reduxjs/toolkit/query/react";
 
 import {
-  ChartActionResponse,
-  chartApi
+  chartApi,
+  ChartData
 } from "./chartApis";
 
 import {
   Message,
-  Chat,
-  ChatResponse
+  Chat
 } from "@/interfaces/chatInterfaces";
 
-const chatsApi = createApi({
+// Get base URL from environment variable
+const BASE_URL = '/api';
+const LLM_SERVER_URL = process.env.LLM_SERVER_URL;
+
+export const chatsApi = createApi({
   reducerPath: 'chat',
   baseQuery: fetchBaseQuery({
-    baseUrl: '/api',
+    baseUrl: BASE_URL,
   }),
   tagTypes: ['Chat', 'Chats'],
   endpoints: (builder) => ({
@@ -32,6 +35,7 @@ const chatsApi = createApi({
       },
       providesTags: ['Chats']
     }),
+
     getChat: builder.query<Chat, string>({
       query: (chatId) => {
         return {
@@ -45,6 +49,7 @@ const chatsApi = createApi({
       providesTags: (result, error, chatId) => 
         result ? [{ type: 'Chat', id: chatId }] : ['Chat']
     }),
+
     editChat: builder.mutation<Chat, { chatId: string, message: Partial<Chat> }>({
       query: ({ chatId, message }) => {
         return {
@@ -56,6 +61,7 @@ const chatsApi = createApi({
       invalidatesTags: (result, error, { chatId }) => 
         result ? [{ type: 'Chat', id: chatId }, 'Chats'] : []
     }),
+
     deleteChat: builder.mutation<void, string>({
       query: (chatId) => {
         return {
@@ -65,6 +71,7 @@ const chatsApi = createApi({
       },
       invalidatesTags: ['Chats']
     }),
+
     createChat: builder.mutation<Chat, void>({
       query: () => {
         return {
@@ -74,77 +81,149 @@ const chatsApi = createApi({
       },
       invalidatesTags: ['Chats']
     }),
-    addMessage: builder.mutation<ChatResponse, { chatId: string, message: string }>({
-      query: ({ chatId, message }) => {
-        return {
-          url: `/chat/${chatId}/message`,
-          method: 'POST',
-          body: { content: message, role: 'user' },
-        }
-      },
-      async onQueryStarted({ chatId }, { dispatch, queryFulfilled }) {
-        try {
-          // Wait for the response which includes both user message and LLM responses
-          const { data: chatResponse } = await queryFulfilled;
-          
-          // Process system messages to handle chart actions
-          if (_.size(chatResponse.messages) > 0) {
-            _.forEach(chatResponse.messages, async (message) => {
-              if (message.role === 'system') {
-                try {
-                  // Try to parse the content as JSON
-                  const responseData = JSON.parse(message.content) as ChartActionResponse;
-                  
-                  // Handle different action types
-                  switch (responseData.action_type) {
-                    case 'plot_indicator':
-                      // Create a chart when action_type is plot_indicator
-                      const chartData = {
-                        id: `chart-${Date.now()}-${Math.random().toString(36).substr(2, 9)}`,
-                        type: 'line' as const,
-                        title: responseData.ticker || 'Chart',
-                        symbol: responseData.ticker || '',
-                        timeframe: responseData.interval || 'daily',
-                        exchange: responseData.exchange || '',
-                        description: responseData.description || '',
-                        data: responseData.data || [],
-                        indicators: responseData.indicators || []
-                      };
 
-                      // Create the chart
-                      await dispatch(chartApi.endpoints.addChart.initiate(chartData));
-                      break;
-                    case 'chat_response':
-                      // For llm_response, we don't need to do anything special
-                      console.log('get Chat responses:', responseData.message);
-                      break;
-                    default:
-                      break;
-                  }
-                } catch (e) {
-                  // Not JSON or not a chart action, ignore
-                  console.log('Message is not a valid chart action:', e);
+    addMessage: builder.mutation<void, { chatId: string; message: string }>({
+      queryFn: async ({ chatId, message }, { dispatch }) => {
+        // Create abort controller for stream cancellation
+        const controller = new AbortController();
+    
+        // Optimistic update for user message
+        const userMessage: Message = {
+          content: message,
+          role: 'user',
+          timestamp: new Date().toISOString()
+        };
+    
+        const patchResult = dispatch(
+          chatsApi.util.updateQueryData('getChat', chatId, (draft) => {
+            draft.messages = draft.messages || [];
+            draft.messages.push(userMessage);
+          })
+        );
+    
+        try {
+          // Handle SSE stream
+          const sseResponse = await fetch(`${LLM_SERVER_URL}/api/v1/llm/response`, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({
+              "prompt": message,
+              "thread_id": chatId
+            }),
+            signal: controller.signal,
+          });
+    
+          if (!sseResponse.body) throw new Error('No response body');
+          
+          // Stream processing setup
+          const reader = sseResponse.body.getReader();
+          const decoder = new TextDecoder();
+          let buffer = '';
+          let streamComplete = false;
+          let lastActivityTime = Date.now();
+          const STREAM_TIMEOUT = 50000; // 10 seconds timeout
+          const ACTIVITY_CHECK_INTERVAL = 1000; // Check every second
+
+          // Set up timeout check
+          const timeoutCheck = setInterval(() => {
+            if (Date.now() - lastActivityTime > STREAM_TIMEOUT) {
+              streamComplete = true;
+              clearInterval(timeoutCheck);
+              controller.abort();
+            }
+          }, ACTIVITY_CHECK_INTERVAL);
+
+          try {
+            // Process stream chunks
+            while (!streamComplete) {
+              const { done, value } = await reader.read();
+              
+              if (done) {
+                streamComplete = true;
+                break;
+              }
+
+              lastActivityTime = Date.now(); // Update last activity time
+              buffer += decoder.decode(value, { stream: true });
+              const events = buffer.split('\n\n');
+              buffer = events.pop() || '';
+      
+              for (const event of events) {
+                if (!event.trim()) continue;
+      
+                try {
+                  const jsonData = event.replace(/^data: /, '');
+                  const parsedJsonData = JSON.parse(jsonData);
+
+                  // Process normal messages
+                  dispatch(
+                    chatsApi.util.updateQueryData('getChat', chatId, (draft) => {
+
+                      if (
+                        parsedJsonData.action_type === 'llm_response' &&
+                        !_.isEmpty(parsedJsonData.message)
+                      ) {
+                        draft.messages.push({
+                          role: 'system',
+                          content: parsedJsonData.message,
+                          timestamp: new Date().toISOString()
+                        });
+                      }
+      
+                      if (parsedJsonData.action_type === 'plot_indicator') {
+                        const chartData: ChartData = {
+                          id: `${chatId}-${Date.now()}`,
+                          type: 'line',
+                          title: parsedJsonData.description || '',
+                          symbol: parsedJsonData.ticker,
+                          timeframe: parsedJsonData.interval || 'daily',
+                          exchange: parsedJsonData.exchange || '',
+                          description: parsedJsonData.description || '',
+                          data: [],
+                          indicators: parsedJsonData.indicators || []
+                        };
+                        dispatch(chartApi.endpoints.addChart.initiate(chartData));
+                      }
+                    })
+                  );
+                } catch (error) {
+                  console.error('Error processing SSE event:', error);
                 }
               }
-            })
+
+              if (streamComplete) {
+                break;
+              }
+            }
+          } finally {
+            // Cleanup
+            clearInterval(timeoutCheck);
+            controller.abort();
+            reader.releaseLock();
           }
+          
+          return { data: null };
         } catch (error) {
-          console.error('Error processing message:', error);
+          // Revert optimistic update on error
+          patchResult.undo();
+          console.error('Stream error:', error);
+          return {
+            error: {
+              status: 'CUSTOM_ERROR',
+              error: 'Stream error'
+            }
+          };
         }
-      },
-      invalidatesTags: (result, error, { chatId }) => 
-        result ? [{ type: 'Chat', id: chatId }, 'Chats'] : []
-    }),
+      }
+    })
   }),
 });
 
 export const {
+  useGetChatsQuery,
+  useGetChatQuery,
   useEditChatMutation,
   useDeleteChatMutation,
   useCreateChatMutation,
   useAddMessageMutation,
-  useGetChatQuery,
-  useGetChatsQuery,
 } = chatsApi;
-
-export { chatsApi };

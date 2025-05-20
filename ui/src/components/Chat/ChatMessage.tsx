@@ -115,7 +115,7 @@ export function ChatMessage({ message }: ChatMessageProps) {
             message.role === "user" ? "bg-primary text-primary-foreground ml-4" : "bg-muted text-foreground mr-4"
           ) }
         >
-          { message.role === "user" ? message.content : JSON.parse(message.content).message }
+          { message.content }
         </div>
       </div>
     </div>

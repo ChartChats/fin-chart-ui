@@ -21,21 +21,12 @@ export function ChatList({ chatId }: ChatListProps) {
 
   const scrollRef = useRef<HTMLDivElement>(null);
   const messagesForChat = chatData?.messages || [];
-  const filteredMessages = _.filter(messagesForChat, (message) => {
-    return (
-      message.role === 'user' ||
-      (
-        message.role === 'system' &&
-        JSON.parse(message.content).action_type === 'llm_response'
-      )
-    );
-  });
 
   useEffect(() => {
     if (scrollRef.current) {
       scrollRef.current.scrollTop = scrollRef.current.scrollHeight;
     }
-  }, [filteredMessages]);
+  }, [messagesForChat]);
 
   return (
     <ScrollArea
@@ -47,16 +38,16 @@ export function ChatList({ chatId }: ChatListProps) {
         className="flex flex-col gap-6 p-4"
       >
         {
-          filteredMessages.length === 0 ? (
+          messagesForChat.length === 0 ? (
             <div className="flex items-center justify-center h-32">
               <p className="text-muted-foreground text-sm">
                 No messages yet - start a conversation!
               </p>
             </div>
           ) : (
-            _.map(filteredMessages, (message, index) => (
+            _.map(messagesForChat, (message, index) => (
               <ChatMessage
-                key={ `${chatId}-${message.id || index}` }
+                key={ `${chatId}-${index}` }
                 message={ message }
               />
             ))

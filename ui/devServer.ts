@@ -1,4 +1,4 @@
-import express from 'express';
+import express, { Request, Response, Router, RequestHandler } from 'express';
 import path from 'path';
 import fs from 'fs';
 import { v4 as uuidv4 } from "uuid";
@@ -40,8 +40,9 @@ const generateLLMResponse = (message: string) => {
 export const mockApiPlugin = () => {
   return {
     name: 'mock-api',
-    configureServer(server) {
+    configureServer(server: any) {
       const app = express();
+      const router = Router();
       app.use(express.json());
       
       // Add CORS headers to all routes
@@ -58,7 +59,6 @@ export const mockApiPlugin = () => {
 
       const mockFile = path.resolve(__dirname, 'src/mock');
       
-
       // Create charts directory if it doesn't exist
       const chartsDir = path.join(mockFile, 'charts');
       if (!fs.existsSync(chartsDir)) {
@@ -66,9 +66,10 @@ export const mockApiPlugin = () => {
       }
 
       // Chart API routes
-      app.get('/api/chart', (req, res) => {
+      const getChartsHandler: RequestHandler = (req, res) => {
         if (!fs.existsSync(chartsDir)) {
-          return res.status(200).json([]);
+          res.status(200).json([]);
+          return;
         }
         
         const chartFiles = fs.readdirSync(chartsDir);
@@ -78,9 +79,9 @@ export const mockApiPlugin = () => {
           return JSON.parse(data);
         });
         res.status(200).json(charts);
-      });
-      
-      app.post('/api/chart', (req, res) => {
+      };
+
+      const postChartHandler: RequestHandler = (req, res) => {
         const chart = req.body;
         const chartId = chart.id || `chart-${Date.now()}-${Math.random().toString(36).substring(2, 9)}`;
         chart.id = chartId;
@@ -88,14 +89,15 @@ export const mockApiPlugin = () => {
         const chartFilePath = path.join(chartsDir, `${chartId}.json`);
         fs.writeFileSync(chartFilePath, JSON.stringify(chart, null, 2));
         res.status(201).json(chart);
-      });
-      
-      app.patch('/api/chart/:id', (req, res) => {
+      };
+
+      const patchChartHandler: RequestHandler = (req, res) => {
         const chartId = req.params.id;
         const chartFilePath = path.join(chartsDir, `${chartId}.json`);
         
         if (!fs.existsSync(chartFilePath)) {
-          return res.status(404).json({ error: 'Chart not found' });
+          res.status(404).json({ error: 'Chart not found' });
+          return;
         }
         
         const existingChart = JSON.parse(fs.readFileSync(chartFilePath, 'utf-8'));
@@ -103,9 +105,9 @@ export const mockApiPlugin = () => {
         
         fs.writeFileSync(chartFilePath, JSON.stringify(updatedChart, null, 2));
         res.status(200).json(updatedChart);
-      });
-      
-      app.delete('/api/chart/:id', (req, res) => {
+      };
+
+      const deleteChartHandler: RequestHandler = (req, res) => {
         const chartId = req.params.id;
         const chartFilePath = path.join(chartsDir, `${chartId}.json`);
         
@@ -114,8 +116,13 @@ export const mockApiPlugin = () => {
         }
         
         res.status(200).json({ message: 'Chart deleted' });
-      });
+      };
 
+      // Apply the handlers to the router
+      router.get('/chart', getChartsHandler);
+      router.post('/chart', postChartHandler);
+      router.patch('/chart/:id', patchChartHandler);
+      router.delete('/chart/:id', deleteChartHandler);
 
       // Create chats directory if it doesn't exist
       const chatsDir = path.join(mockFile, 'chats');
@@ -124,7 +131,7 @@ export const mockApiPlugin = () => {
       }
 
       // Chat API routes
-      app.get('/api/chat/chats', (req, res) => {
+      const getChatsHandler: RequestHandler = (req, res) => {
         const chatFiles = fs.readdirSync(path.join(mockFile, 'chats'));
         const chats = chatFiles.map(file => {
           const filePath = path.join(mockFile, 'chats', file);
@@ -137,9 +144,9 @@ export const mockApiPlugin = () => {
           };
         });
         res.status(200).json(chats);
-      });
+      };
 
-      app.post('/api/chat/create', (req, res) => {
+      const createChatHandler: RequestHandler = (req, res) => {
         const uuid = uuidv4();
         const chatFilePath = path.join(mockFile, 'chats', `chat-${uuid}.json`);
         fs.writeFileSync(chatFilePath, JSON.stringify({
@@ -147,63 +154,87 @@ export const mockApiPlugin = () => {
           messages: []
         }, null, 2));
         res.status(201).json({ id: uuid });
-      });
+      };
 
-      app.get('/api/chat', (req, res) => {
+      const getChatHandler: RequestHandler = (req, res) => {
         const chatId = req.query.chat_id;
         const dataFilePath = path.join(mockFile, 'chats', `chat-${chatId}.json`);
         const data = fs.readFileSync(dataFilePath, 'utf-8');
         res.status(200).json(JSON.parse(data));
-      });
+      };
 
-      app.post('/api/chat/:id/message', (req, res) => {
+      const postMessageHandler: RequestHandler = (req, res) => {
         const chatId = req.params.id;
         const message = req.body;
         const dataFilePath = path.join(mockFile, 'chats', `chat-${chatId}.json`);
         const data = JSON.parse(fs.readFileSync(dataFilePath, 'utf-8'));
 
-        let serverResponse: string = '';
-        let messageData: any = {};
-        const newMessages: any = [];
-        
-        // Add the user message
+        // Set SSE headers
+        res.setHeader('Content-Type', 'text/event-stream');
+        res.setHeader('Cache-Control', 'no-cache');
+        res.setHeader('Connection', 'keep-alive');
+
+        // Add the user message to stored chat data
         data.messages.push(message);
 
-        // Add chart data response
-        serverResponse = JSON.stringify(generateMockChartData('MSFT'));
-        messageData = {
-          role: 'system',
-          content: serverResponse
+        // Helper function to send SSE messages
+        const sendSSEMessage = (messageData: any) => {
+          res.write(`data: ${JSON.stringify(messageData)}\n\n`);
         };
-        newMessages.push(messageData);
-        data.messages.push(messageData);
 
-        // Add LLM response
-        serverResponse = JSON.stringify(generateLLMResponse(
-          "I've displayed the RSI indicator chart for Microsoft (MSFT). If you have any more questions or need further analysis, feel free to ask!"
-        ));
-        messageData = {
-          role: 'system',
-          content: serverResponse
-        };
-        newMessages.push(messageData);
-        data.messages.push(messageData);
+        // Simulate streaming responses with delays
+        setTimeout(() => {
+          // Send chart data response
+          const chartResponse = generateMockChartData('MSFT');
+          const chartMessage = {
+            role: 'system',
+            content: JSON.stringify(chartResponse)
+          };
+          sendSSEMessage(chartMessage);
+          data.messages.push(chartMessage);
 
-        fs.writeFileSync(dataFilePath, JSON.stringify(data, null, 2));
-        res.status(200).json({
-          id: chatId,
-          messages: newMessages,
-        });
-      });
+          // Send LLM response after another delay
+          setTimeout(() => {
+            const llmResponse = generateLLMResponse(
+              "I've displayed the RSI indicator chart for Microsoft (MSFT). If you have any more questions or need further analysis, feel free to ask!"
+            );
+            const llmMessage = {
+              role: 'system',
+              content: JSON.stringify(llmResponse)
+            };
+            sendSSEMessage(llmMessage);
+            data.messages.push(llmMessage);
 
-      app.delete('/api/chat/:id', (req, res) => {
+            // Save the updated chat data
+            fs.writeFileSync(dataFilePath, JSON.stringify(data, null, 2));
+
+            // Send done event and end the connection
+            setTimeout(() => {
+              res.write(`data: ${JSON.stringify({ event: 'done' })}\n\n`);
+              res.end();
+            }, 500);
+          }, 1000);
+        }, 1000);
+      };
+
+      const deleteChatHandler: RequestHandler = (req, res) => {
         const chatId = req.params.id;
         const dataFilePath = path.join(mockFile, 'chats', `chat-${chatId}.json`);
         if (fs.existsSync(dataFilePath)) {
           fs.unlinkSync(dataFilePath);
         }
         res.status(200).json({ message: 'Chat deleted' });
-      });
+      };
+
+      // Apply the handlers to the router
+      router.get('/chat/chats', getChatsHandler);
+      router.post('/chat/create', createChatHandler);
+      router.get('/chat', getChatHandler);
+      router.post('/chat/:id/message', postMessageHandler);
+      router.delete('/chat/:id', deleteChatHandler);
+
+      // Mount the router
+      app.use('/api', router);
 
       // Use the Express app as middleware
       server.middlewares.use(app);

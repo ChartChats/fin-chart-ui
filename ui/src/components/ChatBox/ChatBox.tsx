@@ -20,7 +20,7 @@ export function ChatBox({ chatId }: { chatId?: string }) {
   const bgColor = isDarkTheme ? '#27272a' : '#f9fafb';
   const textColor = isDarkTheme ? '#e4e4e7' : '#374151';
 
-  const handleSubmit = async (event: React.FormEvent) => {
+  const handleSubmit = (event: React.FormEvent) => {
     event.preventDefault();
     if (input.trim() === "" || !chatId) return;
     
@@ -29,15 +29,10 @@ export function ChatBox({ chatId }: { chatId?: string }) {
       
       // Send the message to the chat API - this will handle both adding the message
       // and processing chart actions via the onQueryStarted handler in chatsApis.ts
-      const response = await addMessage({ 
+      addMessage({ 
         chatId, 
         message: input 
       }).unwrap();
-      
-      console.log("Chat response:", response);
-      
-      // The chart creation is now handled in the onQueryStarted handler in chatsApis.ts
-      // No need to call processQuestion or manually create charts here
       
       setInput("");
       setIsScreenerMode(false);

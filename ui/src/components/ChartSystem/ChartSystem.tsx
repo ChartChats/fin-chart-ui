@@ -2,7 +2,6 @@ import React, { useState, useEffect } from "react";
 import { Tabs, Button } from "antd";
 import { ChartDisplay } from "./ChartDisplay";
 import { useIsMobile } from "@/hooks/use-mobile";
-import { cn } from "@/lib/utils";
 import { useGetChartsQuery, useAddChartMutation, useRemoveChartMutation } from "@/store";
 import { ChartData } from "@/store/apis/chartApis";
 
@@ -20,10 +19,10 @@ export function ChartSystem() {
   useEffect(() => {
     if (activeCharts.length === 0) {
       setActiveChartId(null);
-    } else if (!activeCharts.find(chart => chart.id === activeChartId)) {
+    } else if (!activeChartId || !activeCharts.find(chart => chart.id === activeChartId)) {
       setActiveChartId(activeCharts[0]?.id);
     }
-  }, [activeCharts, activeChartId]);
+  }, [activeCharts]);
 
   const activeChart = activeCharts.find(chart => chart.id === activeChartId);
   console.log('activeChart', activeChart);
