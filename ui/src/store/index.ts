@@ -30,6 +30,7 @@ export {
 // Export chart API hooks
 export {
   useGetChartsQuery,
+  useGetChartQuery,
   useAddChartMutation,
   useRemoveChartMutation,
   useUpdateChartMutation,

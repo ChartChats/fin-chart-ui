@@ -65,6 +65,18 @@ export const mockApiPlugin = () => {
         fs.mkdirSync(chartsDir, { recursive: true });
       }
 
+      const getChartHandler: RequestHandler = (req, res) => {
+        const chartId = req.params.id;
+        const chartFilePath = path.join(chartsDir, `${chartId}.json`);
+
+        if (!fs.existsSync(chartFilePath)) {
+          res.status(404).json({ error: 'Chart not found' });
+          return;
+        }
+        const chartData = fs.readFileSync(chartFilePath, 'utf-8');
+        res.status(200).json(JSON.parse(chartData));
+      }
+
       // Chart API routes
       const getChartsHandler: RequestHandler = (req, res) => {
         if (!fs.existsSync(chartsDir)) {
@@ -119,6 +131,7 @@ export const mockApiPlugin = () => {
       };
 
       // Apply the handlers to the router
+      router.get('/chart/:id', getChartHandler);
       router.get('/chart', getChartsHandler);
       router.post('/chart', postChartHandler);
       router.patch('/chart/:id', patchChartHandler);

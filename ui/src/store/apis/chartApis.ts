@@ -54,6 +54,11 @@ export const chartApi = createApi({
   }),
   tagTypes: ['Charts'],
   endpoints: (builder) => ({
+    getChart: builder.query<ChartData, string>({
+      query: (id) => `/chart/${id}`,
+      providesTags: ['Charts']
+    }),
+
     getCharts: builder.query<ChartData[], void>({
       query: () => '/chart',
       providesTags: ['Charts']
@@ -79,11 +84,11 @@ export const chartApi = createApi({
       invalidatesTags: ['Charts']
     }),
     
-    updateChart: builder.mutation<ChartData, { id: string, data: Partial<ChartData> }>({
+    updateChart: builder.mutation<ChartData, { id: string, data: Partial<ChartData> }>({  
       query: ({ id, data }) => ({
         url: `/chart/${id}`,
         method: 'PATCH',
-        body: data
+        body: { data }  // Wrap the data in a data property
       }),
       invalidatesTags: ['Charts']
     })
@@ -92,6 +97,7 @@ export const chartApi = createApi({
 
 export const {
   useGetChartsQuery,
+  useGetChartQuery,
   useAddChartMutation,
   useRemoveChartMutation,
   useUpdateChartMutation

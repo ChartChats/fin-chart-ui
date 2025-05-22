@@ -1,23 +1,27 @@
 import React, { useMemo } from "react";
 import { useTheme } from "@/contexts/ThemeContext";
 import { TVChartContainer } from "../TVChart";
+import { useGetChartQuery } from "@/store/index";
 
 interface ChartDisplayProps {
-  chart: any;
+  chartId: string;
 }
 
-export const ChartDisplay = React.memo(({ chart }: ChartDisplayProps) => {
+export const ChartDisplay = React.memo(({ chartId }: ChartDisplayProps) => {
   const { theme } = useTheme();
+  const { data: chart, isLoading } = useGetChartQuery(chartId);
   const themeValue = useMemo(() => theme === 'dark' ? 'dark' : 'light', [theme]);
+
+  if (isLoading || !chart) return null;
 
   return (
     <div className="w-full h-full flex flex-col">
       <div className="flex-1 min-h-0 chart-container">
         <TVChartContainer
-          symbol={ chart.symbol }
-          interval={ chart.timeframe || '1D' }
-          indicators={ chart.indicators }
-          theme={ themeValue }
+          symbol={chart.symbol}
+          interval={chart.timeframe || '1D'}
+          indicators={chart.indicators}
+          theme={themeValue}
         />
       </div>
     </div>

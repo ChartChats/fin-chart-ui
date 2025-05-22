@@ -8,7 +8,7 @@ export default defineConfig(({ mode }) => {
   const env = loadEnv(mode, process.cwd(), '');
   
   const isMock = env.MOCK_DATA === 'true';
-  const serverUrl = env.VITE_SERVER_URL || 'http://localhost:3000';
+  const serverUrl = env.BACKEND_SERVER_URL || 'http://localhost:8000';
 
   return {
     plugins: [
@@ -18,7 +18,7 @@ export default defineConfig(({ mode }) => {
     define: {
       'process.env': {
         LLM_SERVER_URL: env.LLM_SERVER_URL,
-        BACKEND_SERVER_URL: env.VITE_SERVER_URL
+        BACKEND_SERVER_URL: env.BACKEND_SERVER_URL
       }
     },
     server: {

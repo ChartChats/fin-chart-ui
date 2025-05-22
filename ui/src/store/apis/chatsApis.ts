@@ -82,7 +82,7 @@ export const chatsApi = createApi({
       invalidatesTags: ['Chats']
     }),
 
-    addMessage: builder.mutation<void, { chatId: string; message: string }>({
+    addMessage: builder.mutation<void, { chatId: string; message: string }>({  
       queryFn: async ({ chatId, message }, { dispatch }) => {
         // Create abort controller for stream cancellation
         const controller = new AbortController();
@@ -121,9 +121,42 @@ export const chatsApi = createApi({
           let buffer = '';
           let streamComplete = false;
           let lastActivityTime = Date.now();
-          const STREAM_TIMEOUT = 50000; // 10 seconds timeout
+          const STREAM_TIMEOUT = 50000; // 50 seconds timeout
           const ACTIVITY_CHECK_INTERVAL = 1000; // Check every second
-
+    
+          // Use chatId directly as chartId to establish 1:1 relationship
+          // Key change: Use chatId as chartId
+          const chartId = chatId;
+          let chartCreatedForChat = false;
+          let accumulatedIndicators: Array<any> = [];
+    
+          // Check if chart already exists for this chat
+          try {
+            const chartResponse = await fetch(`/api/chart/${chartId}`);
+            
+            // Only process if we got a successful response
+            if (chartResponse.ok) {
+              const chartData = await chartResponse.json();
+              if (chartData && chartData.indicators) {
+                // If chart exists, use its existing indicators as the base
+                accumulatedIndicators = [...chartData.indicators];
+                chartCreatedForChat = true;
+              }
+            } else if (chartResponse.status === 404) {
+              // This is expected if chart doesn't exist yet
+              console.log(`Chart ${chartId} not found, will create new one if needed`);
+              chartCreatedForChat = false;
+            } else {
+              // Handle other error statuses
+              console.error(`Error fetching chart: ${chartResponse.status}`);
+            }
+          } catch (error) {
+            // Handle network errors or other exceptions
+            console.error('Error checking chart existence:', error);
+            // Continue with creating a new chart if needed
+            chartCreatedForChat = false;
+          }
+    
           // Set up timeout check
           const timeoutCheck = setInterval(() => {
             if (Date.now() - lastActivityTime > STREAM_TIMEOUT) {
@@ -132,7 +165,7 @@ export const chatsApi = createApi({
               controller.abort();
             }
           }, ACTIVITY_CHECK_INTERVAL);
-
+    
           try {
             // Process stream chunks
             while (!streamComplete) {
@@ -142,7 +175,7 @@ export const chatsApi = createApi({
                 streamComplete = true;
                 break;
               }
-
+    
               lastActivityTime = Date.now(); // Update last activity time
               buffer += decoder.decode(value, { stream: true });
               const events = buffer.split('\n\n');
@@ -150,15 +183,15 @@ export const chatsApi = createApi({
       
               for (const event of events) {
                 if (!event.trim()) continue;
-      
+    
                 try {
                   const jsonData = event.replace(/^data: /, '');
                   const parsedJsonData = JSON.parse(jsonData);
-
+    
                   // Process normal messages
                   dispatch(
                     chatsApi.util.updateQueryData('getChat', chatId, (draft) => {
-
+    
                       if (
                         parsedJsonData.action_type === 'llm_response' &&
                         !_.isEmpty(parsedJsonData.message)
@@ -169,20 +202,66 @@ export const chatsApi = createApi({
                           timestamp: new Date().toISOString()
                         });
                       }
-      
+    
                       if (parsedJsonData.action_type === 'plot_indicator') {
-                        const chartData: ChartData = {
-                          id: `${chatId}-${Date.now()}`,
-                          type: 'line',
-                          title: parsedJsonData.description || '',
-                          symbol: parsedJsonData.ticker,
-                          timeframe: parsedJsonData.interval || 'daily',
-                          exchange: parsedJsonData.exchange || '',
-                          description: parsedJsonData.description || '',
-                          data: [],
-                          indicators: parsedJsonData.indicators || []
-                        };
-                        dispatch(chartApi.endpoints.addChart.initiate(chartData));
+                        // Add new indicators to our accumulated array
+                        if (parsedJsonData.indicators && parsedJsonData.indicators.length > 0) {
+                          // Merge new indicators with existing ones, avoiding duplicates
+                          const newIndicators = parsedJsonData.indicators;
+                          
+                          // Add only indicators that don't already exist (based on name and value)
+                          newIndicators.forEach((newInd: { name: any; value: any; }) => {
+                            const exists = accumulatedIndicators.some(existingInd => 
+                              existingInd.name === newInd.name && existingInd.value === newInd.value
+                            );
+                            
+                            if (!exists) {
+                              accumulatedIndicators.push(newInd);
+                            }
+                          });
+                        }
+    
+                        if (!chartCreatedForChat) {
+                          // Create new chart if we haven't created one yet for this chat session
+                          const chartData: ChartData = {
+                            id: chartId, // Using chatId as chartId
+                            type: 'line',
+                            title: parsedJsonData.description || '',
+                            symbol: parsedJsonData.ticker,
+                            timeframe: parsedJsonData.interval || 'daily',
+                            exchange: parsedJsonData.exchange || '',
+                            description: parsedJsonData.description || '',
+                            data: [],
+                            indicators: accumulatedIndicators
+                          };
+                          dispatch(chartApi.endpoints.addChart.initiate(chartData));
+                          chartCreatedForChat = true;
+                        } else {
+                          // Update existing chart with all accumulated indicators
+                          dispatch(chartApi.endpoints.updateChart.initiate({
+                            id: chartId,
+                            data: {
+                              indicators: accumulatedIndicators,
+                              // Update other chart properties if they've changed
+                              ...(
+                                parsedJsonData.ticker &&
+                                { symbol: parsedJsonData.ticker }
+                              ),
+                              ...(
+                                parsedJsonData.interval &&
+                                { timeframe: parsedJsonData.interval }
+                              ),
+                              ...(
+                                parsedJsonData.exchange &&
+                                { exchange: parsedJsonData.exchange }
+                              ),
+                              ...(
+                                parsedJsonData.description &&
+                                { description: parsedJsonData.description }
+                              )
+                            }
+                          }));
+                        }
                       }
                     })
                   );
@@ -190,7 +269,7 @@ export const chatsApi = createApi({
                   console.error('Error processing SSE event:', error);
                 }
               }
-
+    
               if (streamComplete) {
                 break;
               }

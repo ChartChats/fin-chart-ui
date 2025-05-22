@@ -83,7 +83,7 @@ export function ChartSystem() {
       />
       <div className="flex-1 overflow-hidden">
         {activeChart ? (
-          <ChartDisplay chart={ activeChart } />
+          <ChartDisplay chartId={ activeChartId } />
         ) : (
           <div className="flex items-center justify-center h-full">
             <div className="text-center p-4">

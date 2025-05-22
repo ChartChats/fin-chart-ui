@@ -58,6 +58,7 @@ const getIndicatorInputs = (tvWidget: any, indicatorName: string) => {
 export const TVChartContainer: React.FC<TVChartProps> = (props: DefaultChartProps) => {
   const chartContainerRef = useRef<HTMLDivElement>(null);
   const widgetRef = useRef<any>(null);
+  const chartReadyRef = useRef<boolean>(false);
 
   const defaultProps = useMemo(() => ({
     symbol: props.symbol,
@@ -76,6 +77,7 @@ export const TVChartContainer: React.FC<TVChartProps> = (props: DefaultChartProp
     exchange: defaultChart.exchange
   }), [props.symbol, props.interval, props.theme]);
 
+  // Main effect for chart initialization
   useEffect(() => {
     if (!chartContainerRef.current) return;
 
@@ -167,72 +169,64 @@ export const TVChartContainer: React.FC<TVChartProps> = (props: DefaultChartProp
     };
 
     const tvWidget = new window.TradingView.widget(widgetOptions);
+    widgetRef.current = tvWidget;
 
     tvWidget.onChartReady(async () => {
-    // for the indicators
+      chartReadyRef.current = true;
+      
       // Volume indicator should be there by default
       tvWidget.chart().createStudy("Volume", false, false, undefined, { "showLabelsOnPriceScale": true });
-
-      // Now plot all the indicators mentoned for this chart
-      if (_.size(props.indicators) > 0) {
-        props.indicators.forEach(indicator => {
-          tvWidget.chart().createStudy(
-            indicator.name,
-            false,
-            false,
-            indicator.properties || getIndicatorInputs(tvWidget, indicator.name),
-          );
-        });
-      }
-
-      // Relative Strength Index
-      // tvWidget.chart().createStudy('Relative Strength Index', false, false, {"period": "14", "overbought_level": "70", "oversold_level": "30"});
-
-      // tvWidget.chart().createShape(
-      //     { time: 1730816449, price: 230 },
-      //     {
-      //         shape: "icon",
-      //         icon: 0xf0da,
-      //     }
-      // );
-
-      // tvWidget.chart().createMultipointShape(
-      //   [
-      //     { time: 1740493249, price: 247.32 },
-      //     { time: 1743603649, price: 224.49 },
-      //     // { time: 1743603649, price: 215 },
-      //   ],
-      //   {
-      //     shape: "trend_line"
-      //   }
-      // );
-
-
-      // tvWidget.chart().createMultipointShape(
-      //   [
-      //     { time: 1735222849, price: 261.06 },
-      //     { time: 1738333249, price: 247.83 },
-      //     { time: 1737555649, price: 219.02 },
-      //   ],
-      //   {
-      //     shape: "triangle"
-      //   }
-      // );
-
-      // customScehma.py
-
-      // for the chart patterns
-      console.log("default shapes", await tvWidget.activeChart().getAllShapes());
+      
+      // Apply initial indicators
+      updateChartIndicators();
+      
+      console.log("Chart ready, default shapes:", await tvWidget.activeChart().getAllShapes());
     });
-
 
     // Cleanup on unmount
     return () => {
-      if (tvWidget !== null) {
-        tvWidget.remove();
+      chartReadyRef.current = false;
+      if (widgetRef.current !== null) {
+        widgetRef.current.remove();
+        widgetRef.current = null;
       }
     };
   }, [props.symbol, props.interval, props.theme]);
+
+  // Function to update chart indicators
+  const updateChartIndicators = () => {
+    const tvWidget = widgetRef.current;
+    if (!tvWidget || !tvWidget.chart || !chartReadyRef.current) return;
+    
+    // Remove all existing studies except Volume
+    const studies = tvWidget.chart().getAllStudies();
+    if (studies && studies.length > 0) {
+      studies.forEach((study: any) => {
+        // Skip the Volume indicator
+        if (study.name !== 'Volume') {
+          tvWidget.chart().removeEntity(study.id);
+        }
+      });
+    }
+    
+    // Add all indicators from props
+    if (_.size(props.indicators) > 0) {
+      console.log("Adding indicators:", props.indicators);
+      props.indicators.forEach(indicator => {
+        tvWidget.chart().createStudy(
+          indicator.name,
+          false,
+          false,
+          indicator.properties || getIndicatorInputs(tvWidget, indicator.name),
+        );
+      });
+    }
+  };
+
+  // Effect to handle indicator updates
+  useEffect(() => {
+    updateChartIndicators();
+  }, [props.indicators]); // Only re-run when indicators change
 
   return (
     <div className="TVChartContainer-wrapper">
