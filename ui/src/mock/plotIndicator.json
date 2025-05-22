@@ -1,0 +1,20 @@
+{
+  "action_type": "plot_indicator",
+  "ticker": "AAPL",
+  "from_date": "1744373991",
+  "to_date": "1746965991",
+  "interval": "1D",
+  "exchange": "NASDAQ",
+  "description": "Apple Inc.",
+  "indicators": [
+    {
+      "name": "Relative Strength Index",
+      "value": "rsi",
+      "properties": {
+        "period": "14",
+        "overbought_level": "70",
+        "oversold_level": "30"
+      }
+    }
+  ]
+}
