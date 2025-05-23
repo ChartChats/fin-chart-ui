@@ -3,7 +3,6 @@ import moment from 'moment';
 
 import {
   makeApiRequest,
-  apiKey,
   configurationData,
   parseFullSymbol
 } from './helpers.js';
@@ -52,6 +51,8 @@ interface DatafeedProps {
   exchange: string;
   interval: string;
   theme: string;
+  from_date?: string; // Add from_date parameter
+  to_date?: string;   // Add to_date parameter
 }
 
 interface SymbolItem {
@@ -71,26 +72,6 @@ interface NewSymbol {
 
 // Global cache to store data for each symbol and resolution
 const dataCache = new Map<string, Bar[]>();
-const lastBarsCache = new Map<string, Bar>();
-
-// Helper functions
-const processBars = (response: any): Bar[] => {
-  if (!response?.values) return [];
-  return response.values.map((bar: any) => ({
-    time: new Date(bar.datetime).getTime(),
-    low: parseFloat(bar.low),
-    high: parseFloat(bar.high),
-    open: parseFloat(bar.open),
-    close: parseFloat(bar.close),
-    volume: parseFloat(bar.volume || 0)
-  }));
-};
-
-const mergeBars = (existing: Bar[], newBars: Bar[], isOlderData: boolean): Bar[] => {
-  const combined = isOlderData ? [...newBars, ...existing] : [...existing, ...newBars];
-  const unique = _.uniqBy(combined, 'time');
-  return _.sortBy(unique, 'time');
-};
 
 export default class Datafeed {
   private props: DatafeedProps;
@@ -107,7 +88,10 @@ export default class Datafeed {
   searchSymbols = async (userInput: string, exchange: string, symbolType: string, onResultReadyCallback: (symbols: any[]) => void): Promise<void> => {
     console.log('[searchSymbols]: Method call');
 
-    const searchedSymbolsData = await makeApiRequest(`symbol_search?symbol=${userInput}&outputsize=100`);
+    const searchedSymbolsData = await makeApiRequest('stock-search', {
+      symbol: userInput,
+      outputsize: 100,
+    });
     console.log("symbols", searchedSymbolsData);
 
     const newSymbols: NewSymbol[] = (searchedSymbolsData.data as SymbolItem[])
@@ -139,7 +123,9 @@ export default class Datafeed {
       const { exchange, symbol } = parsedSymbol;
       
       // Now get the details of the parsed symbol from the API
-      const symbolsResponse = await makeApiRequest(`symbol_search?symbol=${symbol}`);
+      const symbolsResponse = await makeApiRequest('stock-search', {
+        symbol: symbol,
+      });
       
       if (!symbolsResponse?.data) {
         throw new Error('No data received from API');
@@ -251,12 +237,12 @@ export default class Datafeed {
           endDate = new Date(startDate);
         }
   
-        const url = `time_series?symbol=${symbol}&interval=${interval}` +
-          `&start_date=${startDate.toISOString()}` +
-          `&end_date=${endDate.toISOString()}` +
-          `&apikey=${apiKey}`;
-  
-        const response = await makeApiRequest(url);
+        const response = await makeApiRequest('time-series', {
+          symbol: symbol,
+          interval: interval,
+          start_date: startDate.toISOString(),
+          end_date: endDate.toISOString(),
+        });
         
         if (!response?.values?.length) {
           console.log('[getBars]: Empty response');
@@ -286,6 +272,7 @@ export default class Datafeed {
       }
   
       // Filter to requested range
+      // When filtering visible bars, use the date range constraints
       const visibleBars = storedBars.filter(bar => 
         bar.time >= fromMs && bar.time <= toMs
       );

@@ -36,6 +36,8 @@ export function ChartSystem() {
       timeframe: '1D',
       exchange: 'NASDAQ',
       description: 'Apple Inc.',
+      date_from: '',
+      date_to: '',
       data: []
     };
     

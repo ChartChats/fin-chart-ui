@@ -12,6 +12,8 @@ export interface ChartData {
   exchange: string;
   description: string;
   data: any[];
+  date_from: string;
+  date_to: string;
   indicators?: Array<{
     name: string;
     value: string;

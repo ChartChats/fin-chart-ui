@@ -1,4 +1,4 @@
-import { parseFullSymbol, apiKey, getNextDailyBarTime } from './helpers';
+import { parseFullSymbol, getNextDailyBarTime } from './helpers';
 
 interface Bar {
   time: number;
@@ -30,7 +30,7 @@ interface WebSocketMessage {
 }
 
 const socket = new WebSocket(
-  'wss://streamer.twelvedata.com/v2?api_key=' + apiKey
+  'wss://streamer.twelvedata.com/v2?api_key=' + 'abcd'
 );
 const channelToSubscription = new Map<string, SubscriptionItem>();
 
@@ -108,7 +108,8 @@ export function subscribeOnStream(
   const parsedSymbol = parseFullSymbol(`${symbolInfo.exchange}:${symbolInfo.full_name}`);
   if (!parsedSymbol) return;
 
-  const channelString = `0~${parsedSymbol.exchange}~${parsedSymbol.fromSymbol}~${parsedSymbol.toSymbol}`;
+  // Use the symbol property instead of fromSymbol and toSymbol
+  const channelString = `0~${parsedSymbol.exchange}~${parsedSymbol.symbol}~USD`;
   const handler: Handler = {
     id: subscriberUID,
     callback: onRealtimeCallback,

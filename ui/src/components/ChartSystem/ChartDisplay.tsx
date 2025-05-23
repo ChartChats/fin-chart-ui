@@ -22,6 +22,8 @@ export const ChartDisplay = React.memo(({ chartId }: ChartDisplayProps) => {
           interval={chart.timeframe || '1D'}
           indicators={chart.indicators}
           theme={themeValue}
+          date_from={chart.date_from || ''}
+          date_to={chart.date_to || ''}
         />
       </div>
     </div>

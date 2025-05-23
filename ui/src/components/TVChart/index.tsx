@@ -23,6 +23,8 @@ interface TVChartProps {
   interval?: string;
   theme?: string;
   indicators?: IndicatorProps[];
+  date_from: string;
+  date_to: string;
 }
 
 interface DefaultChartProps {
@@ -80,16 +82,18 @@ export const TVChartContainer: React.FC<TVChartProps> = (props: DefaultChartProp
   // Main effect for chart initialization
   useEffect(() => {
     if (!chartContainerRef.current) return;
-
+  
     const datafeed = new Datafeed({
       description: defaultProps.description,
       symbol: defaultProps.symbol,
       interval: defaultProps.interval,
       symbol_type: defaultProps.symbol_type,
       theme: defaultProps.theme,
-      exchange: defaultProps.exchange
+      exchange: defaultProps.exchange,
+      from_date: props.date_from, // Pass from_date from props
+      to_date: props.date_to     // Pass to_date from props
     });
-
+  
     const widgetOptions = {
       symbol: generateSymbol(defaultProps.exchange, defaultProps.symbol),
       datafeed: datafeed,
@@ -117,11 +121,11 @@ export const TVChartContainer: React.FC<TVChartProps> = (props: DefaultChartProp
         'header_resolutions',
         'header_indicators',
         'header_interval_dialog_button',
-        'show_interval_dialog_on_key_press'
+        'show_interval_dialog_on_key_press',
       ],
       disabled_features: [
         'use_localstorage_for_settings',
-        'timezone_menu'
+        'timezone_menu',
       ],
       charts_storage_url: defaultProps.chartsStorageUrl,
       charts_storage_api_version: defaultProps.chartsStorageApiVersion,
@@ -162,25 +166,25 @@ export const TVChartContainer: React.FC<TVChartProps> = (props: DefaultChartProp
           { text: "ALL", resolution: "W", description: "All" }
         ]
       },
-      initial_range: {
-        from: new Date(Date.now() - 30 * 24 * 60 * 60 * 1000).getTime() / 1000,
-        to: Math.floor(Date.now() / 1000)
-      }
+      loading_screen: { backgroundColor: props.theme === 'dark' ? "#131722" : "#ffffff" },
     };
 
     const tvWidget = new window.TradingView.widget(widgetOptions);
     widgetRef.current = tvWidget;
 
+    // Add this in the onChartReady callback
     tvWidget.onChartReady(async () => {
       chartReadyRef.current = true;
       
+      // Update visible range
+      updateVisibleRange();
+  
+      // Existing indicator setup
       // Volume indicator should be there by default
       tvWidget.chart().createStudy("Volume", false, false, undefined, { "showLabelsOnPriceScale": true });
-      
+
       // Apply initial indicators
       updateChartIndicators();
-      
-      console.log("Chart ready, default shapes:", await tvWidget.activeChart().getAllShapes());
     });
 
     // Cleanup on unmount
@@ -192,6 +196,22 @@ export const TVChartContainer: React.FC<TVChartProps> = (props: DefaultChartProp
       }
     };
   }, [props.symbol, props.interval, props.theme]);
+
+  const updateVisibleRange = () => {
+    const tvWidget = widgetRef.current;
+    if (!tvWidget || !tvWidget.chart || !chartReadyRef.current) return;
+
+    const chart = tvWidget.chart();
+    chart.setVisibleRange({
+      from: props.date_from ? parseInt(props.date_from) : new Date(Date.now() - 30 * 24 * 60 * 60 * 1000).getTime() / 1000,
+      to: props.date_to ? parseInt(props.date_to) : Math.floor(Date.now() / 1000)
+    });
+  };
+
+  // Add this new effect to handle date range updates
+  useEffect(() => {
+    updateVisibleRange();
+  }, [props.date_from, props.date_to]); // Re-run when date range 
 
   // Function to update chart indicators
   const updateChartIndicators = () => {

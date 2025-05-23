@@ -1,9 +1,6 @@
 
 import symbolTypes from "../../mock/symbolTypes.json";
 
-// Your TwelveData API key
-export const apiKey = "2029fb701e55433b9e8b3f722db59df2";
-
 interface ParsedSymbol {
   exchange: string;
   symbol: string;
@@ -26,15 +23,24 @@ interface IntervalMap {
   [key: string]: string;
 }
 
-// Makes requests to TwelveData API
-export async function makeApiRequest(path: string): Promise<any> {
+// Makes requests to backend API
+export async function makeApiRequest(endpoint: string = '', payload: Record<string, any> = {}): Promise<any> {
   try {
-    const url = new URL(`https://api.twelvedata.com/${path}`);
-    url.searchParams.append('Authorization', apiKey);
-    const response = await fetch(url.toString());
+    const response = await fetch(`${process.env.BACKEND_SERVER_URL}/api/v1/${endpoint}`, {
+      method: 'POST',
+      headers: {
+        'Content-Type': 'application/json'
+      },
+      body: JSON.stringify(payload)
+    });
+    
+    if (!response.ok) {
+      throw new Error(`API request error: ${response.status}`);
+    }
     return response.json();
   } catch (error: any) {
-    throw new Error(`TwelveData request error: ${error.status}`);
+    console.error('API request failed:', error);
+    throw new Error(`API request error: ${error.message}`);
   }
 }
 

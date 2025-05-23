@@ -17,7 +17,6 @@ export default defineConfig(({ mode }) => {
     ],
     define: {
       'process.env': {
-        LLM_SERVER_URL: env.LLM_SERVER_URL,
         BACKEND_SERVER_URL: env.BACKEND_SERVER_URL
       }
     },

@@ -17,7 +17,6 @@ import {
 
 // Get base URL from environment variable
 const BASE_URL = '/api';
-const LLM_SERVER_URL = process.env.LLM_SERVER_URL;
 
 export const chatsApi = createApi({
   reducerPath: 'chat',
@@ -103,7 +102,7 @@ export const chatsApi = createApi({
     
         try {
           // Handle SSE stream
-          const sseResponse = await fetch(`${LLM_SERVER_URL}/api/v1/llm/response`, {
+          const sseResponse = await fetch(`${process.env.BACKEND_SERVER_URL}/api/v1/llm/response`, {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
             body: JSON.stringify({
@@ -232,7 +231,9 @@ export const chatsApi = createApi({
                             exchange: parsedJsonData.exchange || '',
                             description: parsedJsonData.description || '',
                             data: [],
-                            indicators: accumulatedIndicators
+                            indicators: accumulatedIndicators,
+                            date_from: parsedJsonData.from_date,
+                            date_to: parsedJsonData.to_date,
                           };
                           dispatch(chartApi.endpoints.addChart.initiate(chartData));
                           chartCreatedForChat = true;
@@ -258,7 +259,15 @@ export const chatsApi = createApi({
                               ...(
                                 parsedJsonData.description &&
                                 { description: parsedJsonData.description }
-                              )
+                              ),
+                              ...(
+                                parsedJsonData.date_from &&
+                                { date_from: parsedJsonData.date_from }
+                              ),
+                              ...(
+                                parsedJsonData.date_to &&
+                                { date_to: parsedJsonData.date_to }
+                              ),
                             }
                           }));
                         }
