@@ -3,7 +3,7 @@ import { Tabs, Button } from "antd";
 import { ChartDisplay } from "./ChartDisplay";
 import { useIsMobile } from "@/hooks/use-mobile";
 import { useGetChartsQuery, useAddChartMutation, useRemoveChartMutation } from "@/store";
-import { ChartData } from "@/store/apis/chartApis";
+import { ChartData } from "@/interfaces/chartInterfaces";
 
 export function ChartSystem() {
   const { data: activeCharts = [], isLoading } = useGetChartsQuery();

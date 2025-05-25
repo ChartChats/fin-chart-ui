@@ -3,40 +3,9 @@ import {
   fetchBaseQuery,
 } from "@reduxjs/toolkit/query/react";
 
-export interface ChartData {
-  id: string;
-  type: 'line' | 'bar' | 'candlestick' | 'area';
-  title: string;
-  symbol: string;
-  timeframe: string;
-  exchange: string;
-  description: string;
-  data: any[];
-  date_from: string;
-  date_to: string;
-  indicators?: Array<{
-    name: string;
-    value: string;
-    properties: Record<string, string>;
-  }>;
-}
-
-export interface ChartActionResponse {
-  action_type: string;
-  message?: string;
-  ticker?: string;
-  from_date?: string;
-  to_date?: string;
-  interval?: string;
-  exchange?: string;
-  description?: string;
-  data?: any[];
-  indicators?: Array<{
-    name: string;
-    value: string;
-    properties: Record<string, string>;
-  }>;
-}
+import {
+  ChartData
+} from "@/interfaces/chartInterfaces";
 
 // Default chart configuration
 export const DEFAULT_CHART_CONFIG = {

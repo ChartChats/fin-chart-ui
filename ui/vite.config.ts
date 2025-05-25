@@ -17,7 +17,8 @@ export default defineConfig(({ mode }) => {
     ],
     define: {
       'process.env': {
-        BACKEND_SERVER_URL: env.BACKEND_SERVER_URL
+        BACKEND_SERVER_URL: env.BACKEND_SERVER_URL,
+        USE_SSE_URL: env.USE_SSE_URL,
       }
     },
     server: {

@@ -1,4 +1,3 @@
-
 import symbolTypes from "../../mock/symbolTypes.json";
 
 interface ParsedSymbol {
@@ -23,10 +22,36 @@ interface IntervalMap {
   [key: string]: string;
 }
 
+// Helper function to normalize timestamps for TradingView
+export function normalizeTimestamp(timestamp: number): number {
+  // If timestamp is in milliseconds (13 digits), convert to seconds
+  if (timestamp.toString().length === 13) {
+    return Math.floor(timestamp / 1000);
+  }
+  // If already in seconds (10 digits), return as is
+  return Math.floor(timestamp);
+}
+
 // Makes requests to backend API
 export async function makeApiRequest(endpoint: string = '', payload: Record<string, any> = {}): Promise<any> {
+  let baseUrl = null, endpointUrl = '';
+
+  if (process.env.USE_SSE_URL === 'true') {
+    baseUrl = `${process.env.BACKEND_SERVER_URL}/api/v1`;
+    endpointUrl = endpoint;
+  } else {
+    baseUrl = 'https://api.twelvedata.com';
+    if (endpoint === 'stock-search') {
+      endpointUrl = 'symbol_search';
+    } else if (endpoint === 'time-series') {
+      endpointUrl = 'time_series';
+    }
+  }
+
   try {
-    const response = await fetch(`${process.env.BACKEND_SERVER_URL}/api/v1/${endpoint}`, {
+    console.log(`[API Request]: ${baseUrl}/${endpointUrl}`, payload);
+    
+    const response = await fetch(`${baseUrl}/${endpointUrl}`, {
       method: 'POST',
       headers: {
         'Content-Type': 'application/json'
@@ -37,7 +62,9 @@ export async function makeApiRequest(endpoint: string = '', payload: Record<stri
     if (!response.ok) {
       throw new Error(`API request error: ${response.status}`);
     }
-    return response.json();
+    const data = await response.json();
+    console.log(`[API Response]: Received ${data?.values?.length || 0} data points`);
+    return data;
   } catch (error: any) {
     console.error('API request failed:', error);
     throw new Error(`API request error: ${error.message}`);
@@ -52,13 +79,20 @@ export function generateSymbol(exchange: string, symbol: string): string {
 // Returns all parts of the symbol
 export function parseFullSymbol(fullSymbol: string): ParsedSymbol {
   const match = fullSymbol.match(/^(\w+):(\w+)$/);
-  return match ? { exchange: match[1], symbol: match[2] } : null;
+  if (!match) {
+    console.warn(`[parseFullSymbol]: Could not parse symbol: ${fullSymbol}`);
+    return { exchange: 'UNKNOWN', symbol: fullSymbol };
+  }
+  return { exchange: match[1], symbol: match[2] };
 }
 
 export function getNextDailyBarTime(barTime: number): number {
-  const date = new Date(barTime * 1000);
-  date.setDate(date.getDate() + 1);
-  return date.getTime() / 1000;
+  // Ensure we're working with seconds
+  const normalizedTime = normalizeTimestamp(barTime);
+  const date = new Date(normalizedTime * 1000);
+  date.setUTCDate(date.getUTCDate() + 1);
+  date.setUTCHours(0, 0, 0, 0); // Reset to start of day in UTC
+  return Math.floor(date.getTime() / 1000);
 }
 
 // DatafeedConfiguration implementation

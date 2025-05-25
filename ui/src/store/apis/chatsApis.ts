@@ -1,4 +1,5 @@
 import _ from 'lodash';
+import moment from 'moment';
 
 import {
   createApi,
@@ -6,14 +7,17 @@ import {
 } from "@reduxjs/toolkit/query/react";
 
 import {
-  chartApi,
-  ChartData
+  chartApi
 } from "./chartApis";
 
 import {
   Message,
   Chat
 } from "@/interfaces/chatInterfaces";
+
+import {
+  ChartData
+} from "@/interfaces/chartInterfaces";
 
 // Get base URL from environment variable
 const BASE_URL = '/api';
@@ -99,10 +103,15 @@ export const chatsApi = createApi({
             draft.messages.push(userMessage);
           })
         );
+
+        const SSE_ENDPOINT = process.env.USE_SSE_URL === 'true'
+          ? `${process.env.BACKEND_SERVER_URL}/api/v1/llm/response`
+          : `/api/chat/${chatId}/message`;
+
     
         try {
           // Handle SSE stream
-          const sseResponse = await fetch(`${process.env.BACKEND_SERVER_URL}/api/v1/llm/response`, {
+          const sseResponse = await fetch(SSE_ENDPOINT, {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
             body: JSON.stringify({
@@ -128,6 +137,7 @@ export const chatsApi = createApi({
           const chartId = chatId;
           let chartCreatedForChat = false;
           let accumulatedIndicators: Array<any> = [];
+          let accumulatedChartPatterns: Array<any> = [];
     
           // Check if chart already exists for this chat
           try {
@@ -137,8 +147,8 @@ export const chatsApi = createApi({
             if (chartResponse.ok) {
               const chartData = await chartResponse.json();
               if (chartData && chartData.indicators) {
-                // If chart exists, use its existing indicators as the base
                 accumulatedIndicators = [...chartData.indicators];
+                accumulatedChartPatterns = chartData.chart_pattern ? [...chartData.chart_pattern] : [];
                 chartCreatedForChat = true;
               }
             } else if (chartResponse.status === 404) {
@@ -219,58 +229,77 @@ export const chatsApi = createApi({
                             }
                           });
                         }
-    
-                        if (!chartCreatedForChat) {
-                          // Create new chart if we haven't created one yet for this chat session
-                          const chartData: ChartData = {
-                            id: chartId, // Using chatId as chartId
-                            type: 'line',
-                            title: parsedJsonData.description || '',
-                            symbol: parsedJsonData.ticker,
-                            timeframe: parsedJsonData.interval || 'daily',
-                            exchange: parsedJsonData.exchange || '',
-                            description: parsedJsonData.description || '',
-                            data: [],
-                            indicators: accumulatedIndicators,
-                            date_from: parsedJsonData.from_date,
-                            date_to: parsedJsonData.to_date,
-                          };
-                          dispatch(chartApi.endpoints.addChart.initiate(chartData));
-                          chartCreatedForChat = true;
-                        } else {
-                          // Update existing chart with all accumulated indicators
-                          dispatch(chartApi.endpoints.updateChart.initiate({
-                            id: chartId,
-                            data: {
-                              indicators: accumulatedIndicators,
-                              // Update other chart properties if they've changed
-                              ...(
-                                parsedJsonData.ticker &&
-                                { symbol: parsedJsonData.ticker }
-                              ),
-                              ...(
-                                parsedJsonData.interval &&
-                                { timeframe: parsedJsonData.interval }
-                              ),
-                              ...(
-                                parsedJsonData.exchange &&
-                                { exchange: parsedJsonData.exchange }
-                              ),
-                              ...(
-                                parsedJsonData.description &&
-                                { description: parsedJsonData.description }
-                              ),
-                              ...(
-                                parsedJsonData.date_from &&
-                                { date_from: parsedJsonData.date_from }
-                              ),
-                              ...(
-                                parsedJsonData.date_to &&
-                                { date_to: parsedJsonData.date_to }
-                              ),
-                            }
-                          }));
+                      }
+
+                      if (parsedJsonData.action_type === 'plot_chart_pattern') {
+                        // Add new chart patterns to our accumulated array
+                        if (parsedJsonData.chart_pattern && parsedJsonData.chart_pattern.length > 0) {
+                          // Merge new chart patterns with existing ones, avoiding duplicates
+                          const newChartPatterns = parsedJsonData.chart_pattern;
+                          
+                          // Add only chart patterns that don't already exist (based on name and value)
+                          newChartPatterns.forEach((pattern: any) => {
+                            accumulatedChartPatterns.push(pattern);
+                          });
                         }
+                      }
+  
+                      // if the action type is inidicator or pattern then  only update the chart or create the chart
+                      if (
+                        (parsedJsonData.action_type === 'plot_indicator' || parsedJsonData.action_type === 'plot_chart_pattern') &&
+                        !chartCreatedForChat
+                      ) {
+                        // Create new chart if we haven't created one yet for this chat session
+                        const chartData: ChartData = {
+                          id: chartId, // Using chatId as chartId
+                          type: 'line',
+                          title: parsedJsonData.description || '',
+                          symbol: parsedJsonData.ticker,
+                          timeframe: parsedJsonData.interval || 'daily',
+                          exchange: parsedJsonData.exchange || '',
+                          description: parsedJsonData.description || '',
+                          data: [],
+                          indicators: accumulatedIndicators,
+                          chart_pattern: accumulatedChartPatterns,
+                          date_from: `${moment(parsedJsonData.from_date).unix()}`,
+                          date_to: `${moment(parsedJsonData.to_date).unix()}`,
+                        };
+                        dispatch(chartApi.endpoints.addChart.initiate(chartData));
+                        chartCreatedForChat = true;
+                      } else {
+                        // Update existing chart with all accumulated indicators
+                        dispatch(chartApi.endpoints.updateChart.initiate({
+                          id: chartId,
+                          data: {
+                            indicators: accumulatedIndicators,
+                            chart_pattern: accumulatedChartPatterns,
+                            // Update other chart properties if they've changed
+                            ...(
+                              parsedJsonData.ticker &&
+                              { symbol: parsedJsonData.ticker }
+                            ),
+                            ...(
+                              parsedJsonData.interval &&
+                              { timeframe: parsedJsonData.interval }
+                            ),
+                            ...(
+                              parsedJsonData.exchange &&
+                              { exchange: parsedJsonData.exchange }
+                            ),
+                            ...(
+                              parsedJsonData.description &&
+                              { description: parsedJsonData.description }
+                            ),
+                            ...(
+                              parsedJsonData.date_from &&
+                              { date_from: parsedJsonData.date_from }
+                            ),
+                            ...(
+                              parsedJsonData.date_to &&
+                              { date_to: parsedJsonData.date_to }
+                            ),
+                          }
+                        }));
                       }
                     })
                   );

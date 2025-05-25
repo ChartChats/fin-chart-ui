@@ -14,6 +14,8 @@ export const ChartDisplay = React.memo(({ chartId }: ChartDisplayProps) => {
 
   if (isLoading || !chart) return null;
 
+  console.log(chart);
+
   return (
     <div className="w-full h-full flex flex-col">
       <div className="flex-1 min-h-0 chart-container">
@@ -21,6 +23,7 @@ export const ChartDisplay = React.memo(({ chartId }: ChartDisplayProps) => {
           symbol={chart.symbol}
           interval={chart.timeframe || '1D'}
           indicators={chart.indicators}
+          chartPatterns={chart.chart_pattern}
           theme={themeValue}
           date_from={chart.date_from || ''}
           date_to={chart.date_to || ''}

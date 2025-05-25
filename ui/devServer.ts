@@ -3,8 +3,8 @@ import path from 'path';
 import fs from 'fs';
 import { v4 as uuidv4 } from "uuid";
 
-// Mock data for chart responses
-const generateMockChartData = (symbol: string) => {
+// Mock data for chart indicator responses
+const generateMockChartIndicatorData = (symbol: string) => {
   const now = Math.floor(Date.now() / 1000);
   const oneYearAgo = now - 365 * 24 * 60 * 60;
 
@@ -30,6 +30,15 @@ const generateMockChartData = (symbol: string) => {
   };
 };
 
+// Mock data for chart indicator responses
+const generateMockChartPatternData = (symbol: string, fileName: string = '') => {
+  const filePath = path.join(__dirname, 'src', 'mock', 'charts', fileName);
+  if (fs.existsSync(filePath)) {
+    const fileData = fs.readFileSync(filePath, 'utf-8');
+    return JSON.parse(fileData);
+  }
+};
+
 const generateLLMResponse = (message: string) => {
   return {
     action_type: "llm_response",
@@ -44,7 +53,7 @@ export const mockApiPlugin = () => {
       const app = express();
       const router = Router();
       app.use(express.json());
-      
+
       // Add CORS headers to all routes
       app.use('/api', (req, res, next) => {
         res.header('Access-Control-Allow-Origin', '*');
@@ -58,7 +67,7 @@ export const mockApiPlugin = () => {
       });
 
       const mockFile = path.resolve(__dirname, 'src/mock');
-      
+
       // Create charts directory if it doesn't exist
       const chartsDir = path.join(mockFile, 'charts');
       if (!fs.existsSync(chartsDir)) {
@@ -83,7 +92,7 @@ export const mockApiPlugin = () => {
           res.status(200).json([]);
           return;
         }
-        
+
         const chartFiles = fs.readdirSync(chartsDir);
         const charts = chartFiles.map(file => {
           const filePath = path.join(chartsDir, file);
@@ -97,7 +106,7 @@ export const mockApiPlugin = () => {
         const chart = req.body;
         const chartId = chart.id || `chart-${Date.now()}-${Math.random().toString(36).substring(2, 9)}`;
         chart.id = chartId;
-        
+
         const chartFilePath = path.join(chartsDir, `${chartId}.json`);
         fs.writeFileSync(chartFilePath, JSON.stringify(chart, null, 2));
         res.status(201).json(chart);
@@ -106,15 +115,15 @@ export const mockApiPlugin = () => {
       const patchChartHandler: RequestHandler = (req, res) => {
         const chartId = req.params.id;
         const chartFilePath = path.join(chartsDir, `${chartId}.json`);
-        
+
         if (!fs.existsSync(chartFilePath)) {
           res.status(404).json({ error: 'Chart not found' });
           return;
         }
-        
+
         const existingChart = JSON.parse(fs.readFileSync(chartFilePath, 'utf-8'));
         const updatedChart = { ...existingChart, ...req.body.data };
-        
+
         fs.writeFileSync(chartFilePath, JSON.stringify(updatedChart, null, 2));
         res.status(200).json(updatedChart);
       };
@@ -122,11 +131,11 @@ export const mockApiPlugin = () => {
       const deleteChartHandler: RequestHandler = (req, res) => {
         const chartId = req.params.id;
         const chartFilePath = path.join(chartsDir, `${chartId}.json`);
-        
+
         if (fs.existsSync(chartFilePath)) {
           fs.unlinkSync(chartFilePath);
         }
-        
+
         res.status(200).json({ message: 'Chart deleted' });
       };
 
@@ -181,6 +190,8 @@ export const mockApiPlugin = () => {
         const message = req.body;
         const dataFilePath = path.join(mockFile, 'chats', `chat-${chatId}.json`);
         const data = JSON.parse(fs.readFileSync(dataFilePath, 'utf-8'));
+        
+        let timeOutMilliseconds = 1000;
 
         // Set SSE headers
         res.setHeader('Content-Type', 'text/event-stream');
@@ -195,39 +206,61 @@ export const mockApiPlugin = () => {
           res.write(`data: ${JSON.stringify(messageData)}\n\n`);
         };
 
+        console.log("I am here");
+
         // Simulate streaming responses with delays
         setTimeout(() => {
           // Send chart data response
-          const chartResponse = generateMockChartData('MSFT');
+          const chartResponse = generateMockChartIndicatorData('MSFT');
           const chartMessage = {
             role: 'system',
             content: JSON.stringify(chartResponse)
           };
           sendSSEMessage(chartMessage);
           data.messages.push(chartMessage);
+        }, timeOutMilliseconds);
 
-          // Send LLM response after another delay
-          setTimeout(() => {
-            const llmResponse = generateLLMResponse(
-              "I've displayed the RSI indicator chart for Microsoft (MSFT). If you have any more questions or need further analysis, feel free to ask!"
-            );
-            const llmMessage = {
-              role: 'system',
-              content: JSON.stringify(llmResponse)
-            };
-            sendSSEMessage(llmMessage);
-            data.messages.push(llmMessage);
+        // Increase the delay for the next message
+        timeOutMilliseconds += 2000;
 
-            // Save the updated chat data
-            fs.writeFileSync(dataFilePath, JSON.stringify(data, null, 2));
+        // Send the pattern data response after a delay
+        setTimeout(() => {
+          const patternResponse = generateMockChartPatternData('MSFT', 'bullish_obr.json');
+          const patternMessage = {
+            role: 'system',
+            content: JSON.stringify(patternResponse)
+          };
+          sendSSEMessage(patternMessage);
+          data.messages.push(patternMessage);
+        }, timeOutMilliseconds);
 
-            // Send done event and end the connection
-            setTimeout(() => {
-              res.write(`data: ${JSON.stringify({ event: 'done' })}\n\n`);
-              res.end();
-            }, 500);
-          }, 1000);
-        }, 1000);
+        // Increase the delay for the next message
+        timeOutMilliseconds += 2000;
+
+        // Send LLM response after another delay
+        setTimeout(() => {
+          const llmResponse = generateLLMResponse(
+            "I've displayed the RSI indicator chart for Microsoft (MSFT). If you have any more questions or need further analysis, feel free to ask!"
+          );
+          const llmMessage = {
+            role: 'system',
+            content: JSON.stringify(llmResponse)
+          };
+          sendSSEMessage(llmMessage);
+          data.messages.push(llmMessage);
+
+          // Save the updated chat data
+          fs.writeFileSync(dataFilePath, JSON.stringify(data, null, 2));
+        }, timeOutMilliseconds);
+
+        // Increase the delay for the next message
+        timeOutMilliseconds += 1000;
+
+        // Send done event and end the connection
+        setTimeout(() => {
+          res.write(`data: ${JSON.stringify({ event: 'done' })}\n\n`);
+          res.end();
+        }, timeOutMilliseconds);
       };
 
       const deleteChatHandler: RequestHandler = (req, res) => {

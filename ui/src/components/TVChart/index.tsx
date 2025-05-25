@@ -1,11 +1,21 @@
 import React, { useEffect, useRef, useMemo } from 'react';
+import moment from 'moment';
 import _ from 'lodash';
 import { generateSymbol } from './helpers';
 import Datafeed from './datafeed';
 import './index.css';
 import defaultChart from '../../mock/defaultChart.json';
 
-import { IndicatorProps } from '@/interfaces/chartInterfaces';
+import {
+  getShapeMap,
+  getChartPatternFunction,
+  colorMap
+} from '@/utils/AppUtils';
+
+import {
+  DefaultChartProps,
+  TVChartProps,
+} from '@/interfaces/chartInterfaces';
 
 declare global {
   interface Window {
@@ -16,30 +26,6 @@ declare global {
       };
     };
   }
-}
-
-interface TVChartProps {
-  symbol?: string;
-  interval?: string;
-  theme?: string;
-  indicators?: IndicatorProps[];
-  date_from: string;
-  date_to: string;
-}
-
-interface DefaultChartProps {
-  indicators: IndicatorProps[];
-  interval: string;
-  symbol: string;
-  exchange: string;
-  type: string;
-  description: string;
-  ticker: string;
-  date_from: string;
-  date_to: string;
-  resolution: string;
-  range: string;
-  theme: string;
 }
 
 function getLanguageFromURL(): string | null {
@@ -55,6 +41,16 @@ const getIndicatorInputs = (tvWidget: any, indicatorName: string) => {
     indicatorProps[input.id] = input.defval;
   });
   return indicatorProps;
+};
+
+// Helper function to ensure timestamp is in seconds for TradingView
+const normalizeTimestamp = (timestamp: number): number => {
+  // If timestamp is in milliseconds (13 digits), convert to seconds
+  if (timestamp.toString().length === 13) {
+    return Math.floor(timestamp / 1000);
+  }
+  // If already in seconds (10 digits), return as is
+  return Math.floor(timestamp);
 };
 
 export const TVChartContainer: React.FC<TVChartProps> = (props: DefaultChartProps) => {
@@ -78,6 +74,129 @@ export const TVChartContainer: React.FC<TVChartProps> = (props: DefaultChartProp
     description: defaultChart.description,
     exchange: defaultChart.exchange
   }), [props.symbol, props.interval, props.theme]);
+
+  // Function to update visible range
+  const updateVisibleRange = () => {
+    const tvWidget = widgetRef.current;
+    if (!tvWidget || !tvWidget.chart || !chartReadyRef.current) return;
+
+    const chart = tvWidget.chart();
+    
+    // Ensure timestamps are in seconds
+    const fromTime = props.date_from ? normalizeTimestamp(parseInt(props.date_from)) : moment().subtract(30, 'days').unix();
+    const toTime = props.date_to ? normalizeTimestamp(parseInt(props.date_to)) : moment().unix();
+    
+    console.log(`[updateVisibleRange]: Setting range from ${fromTime} to ${toTime}`);
+    
+    chart.setVisibleRange({
+      from: fromTime,
+      to: toTime
+    });
+  };
+
+  // Function to update chart indicators
+  const updateChartIndicators = () => {
+    const tvWidget = widgetRef.current;
+    if (!tvWidget || !tvWidget.chart || !chartReadyRef.current) return;
+    
+    // Remove all existing studies except Volume
+    const studies = tvWidget.chart().getAllStudies();
+    if (studies && studies.length > 0) {
+      studies.forEach((study: any) => {
+        // Skip the Volume indicator
+        if (study.name !== 'Volume') {
+          tvWidget.chart().removeEntity(study.id);
+        }
+      });
+    }
+    
+    // Add all indicators from props
+    if (_.size(props.indicators) > 0) {
+      props.indicators.forEach(indicator => {
+        tvWidget.chart().createStudy(
+          indicator.name,
+          false,
+          false,
+          indicator.properties || getIndicatorInputs(tvWidget, indicator.name),
+        );
+      });
+    }
+  };
+
+  const updateChartPatterns = () => {
+    const tvWidget = widgetRef.current;
+    if (!tvWidget || !tvWidget.chart || !chartReadyRef.current) return;
+
+    const chart = tvWidget.chart();
+
+    // Clear existing patterns first
+    chart.removeAllShapes();
+
+    if (props.chartPatterns && props.chartPatterns.length > 0) {
+      props.chartPatterns.forEach(pattern => {
+        try {
+          if (!pattern.points || !Array.isArray(pattern.points)) {
+            console.error('Invalid pattern points:', pattern);
+            return;
+          }
+
+          const points = pattern.points.map(([time, price]: any) => {
+            if (typeof time !== 'number' || typeof price !== 'number') {
+              throw new Error(`Invalid coordinates: [${time}, ${price}]`);
+            }
+            // Ensure timestamp is in seconds for TradingView
+            return { 
+              time: normalizeTimestamp(time), 
+              price 
+            };
+          });
+
+          const functionName = getChartPatternFunction(pattern);
+          const patternShape = pattern.shape === 'Triangle_Symbol'
+            ? (pattern.direction === 'up' ? 'Triangle_Symbol_up' : 'Triangle_Symbol_down')
+            : pattern.shape;
+
+          const shapeProperties = {
+            shape: getShapeMap[patternShape],
+            overrides: {
+              linecolor: colorMap[pattern.color] || pattern.color,
+              color: colorMap[pattern.color] || pattern.color,
+              linestyle: pattern.dotted ? 1 : 0,
+              linewidth: patternShape === 'Horizontal_Line'? 0.5 : 2,
+            }
+          };
+          // for the text to show
+          if (pattern.text) {
+            shapeProperties['text'] = pattern.text;
+          }
+
+          if (functionName === 'createShape') {
+            chart.createShape(
+              {
+                time: points[0].time,
+                price: points[0].price
+              },
+              shapeProperties
+            );
+          } else if (functionName === 'createMultipointShape') {
+            if (pattern.shape === 'Circle') {
+              points.push({
+                time: points[0].time,
+                price: points[0].price + 1
+              });
+            }
+            chart.createMultipointShape(
+              points,
+              shapeProperties
+            );
+          }
+          
+        } catch (error) {
+          console.error('Error rendering pattern:', error, pattern);
+        }
+      });
+    }
+  }
 
   // Main effect for chart initialization
   useEffect(() => {
@@ -104,6 +223,7 @@ export const TVChartContainer: React.FC<TVChartProps> = (props: DefaultChartProp
       symbol_type: defaultProps.symbol_type,
       description: defaultProps.description,
       locale: getLanguageFromURL() || 'en',
+      timezone: 'Etc/UTC', // Force UTC timezone
       enabled_features: [
         'study_templates',
         'create_volume_indicator_by_default',
@@ -142,7 +262,8 @@ export const TVChartContainer: React.FC<TVChartProps> = (props: DefaultChartProp
         "mainSeriesProperties.candleStyle.wickDownColor": "#ef5350",
         "paneProperties.background": props.theme === 'dark' ? "#131722" : "#ffffff",
         "paneProperties.vertGridProperties.color": props.theme === 'dark' ? "#363c4e" : "#f0f3fa",
-        "paneProperties.horzGridProperties.color": props.theme === 'dark' ? "#363c4e" : "#f0f3fa"
+        "paneProperties.horzGridProperties.color": props.theme === 'dark' ? "#363c4e" : "#f0f3fa",
+        'timeScale.timezone': 'Etc/UTC' // Ensure UTC timezone
       },
       toolbar_bg: props.theme === 'dark' ? "#131722" : "#ffffff",
       timeframes: [
@@ -185,6 +306,11 @@ export const TVChartContainer: React.FC<TVChartProps> = (props: DefaultChartProp
 
       // Apply initial indicators
       updateChartIndicators();
+
+      // Apply initial patterns - delay to ensure chart is fully loaded
+      setTimeout(() => {
+        updateChartPatterns();
+      }, 1000);
     });
 
     // Cleanup on unmount
@@ -197,56 +323,28 @@ export const TVChartContainer: React.FC<TVChartProps> = (props: DefaultChartProp
     };
   }, [props.symbol, props.interval, props.theme]);
 
-  const updateVisibleRange = () => {
-    const tvWidget = widgetRef.current;
-    if (!tvWidget || !tvWidget.chart || !chartReadyRef.current) return;
-
-    const chart = tvWidget.chart();
-    chart.setVisibleRange({
-      from: props.date_from ? parseInt(props.date_from) : new Date(Date.now() - 30 * 24 * 60 * 60 * 1000).getTime() / 1000,
-      to: props.date_to ? parseInt(props.date_to) : Math.floor(Date.now() / 1000)
-    });
-  };
-
   // Add this new effect to handle date range updates
   useEffect(() => {
     updateVisibleRange();
-  }, [props.date_from, props.date_to]); // Re-run when date range 
-
-  // Function to update chart indicators
-  const updateChartIndicators = () => {
-    const tvWidget = widgetRef.current;
-    if (!tvWidget || !tvWidget.chart || !chartReadyRef.current) return;
-    
-    // Remove all existing studies except Volume
-    const studies = tvWidget.chart().getAllStudies();
-    if (studies && studies.length > 0) {
-      studies.forEach((study: any) => {
-        // Skip the Volume indicator
-        if (study.name !== 'Volume') {
-          tvWidget.chart().removeEntity(study.id);
-        }
-      });
-    }
-    
-    // Add all indicators from props
-    if (_.size(props.indicators) > 0) {
-      console.log("Adding indicators:", props.indicators);
-      props.indicators.forEach(indicator => {
-        tvWidget.chart().createStudy(
-          indicator.name,
-          false,
-          false,
-          indicator.properties || getIndicatorInputs(tvWidget, indicator.name),
-        );
-      });
-    }
-  };
+  }, [props.date_from, props.date_to]);
 
   // Effect to handle indicator updates
   useEffect(() => {
     updateChartIndicators();
-  }, [props.indicators]); // Only re-run when indicators change
+  }, [props.indicators]);
+
+  useEffect(() => {
+    updateChartPatterns();
+  }, [props.chartPatterns]);
+
+  useEffect(() => {
+    return () => {
+      const tvWidget = widgetRef.current;
+      if (tvWidget && tvWidget.chart && chartReadyRef.current) {
+        tvWidget.chart().removeAllShapes();
+      }
+    };
+  }, []);
 
   return (
     <div className="TVChartContainer-wrapper">

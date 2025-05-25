@@ -7,68 +7,16 @@ import {
   parseFullSymbol
 } from './helpers.js';
 
+import {
+  Bar,
+  DatafeedProps,
+  SymbolInfo,
+  PeriodParams,
+  NewSymbol,
+  SymbolItem,
+} from '@/interfaces/chartInterfaces.js';
+
 import { subscribeOnStream, unsubscribeFromStream } from './streaming.js';
-
-interface Bar {
-  time: number;
-  low: number;
-  high: number;
-  open: number;
-  close: number;
-  volume: number;
-}
-
-interface SymbolInfo {
-  ticker: string;
-  name: string;
-  description: string;
-  type: string;
-  session: string;
-  timezone: string;
-  exchange: string;
-  interval: string;
-  minmov: number;
-  pricescale: number;
-  has_intraday: boolean;
-  has_daily: boolean;
-  has_weekly_and_monthly: boolean;
-  supported_resolutions: string[];
-  volume_precision: number;
-  visible_plots_set: string;
-  data_status: string;
-}
-
-interface PeriodParams {
-  from: number;
-  to: number;
-  firstDataRequest: boolean;
-}
-
-interface DatafeedProps {
-  symbol: string;
-  description: string;
-  symbol_type: string;
-  exchange: string;
-  interval: string;
-  theme: string;
-  from_date?: string; // Add from_date parameter
-  to_date?: string;   // Add to_date parameter
-}
-
-interface SymbolItem {
-  symbol: string;
-  instrument_name: string;
-  exchange: string;
-  instrument_type: string;
-}
-
-interface NewSymbol {
-  symbol: string;
-  description: string;
-  exchange: string;
-  ticker: string;
-  type: string;
-}
 
 // Global cache to store data for each symbol and resolution
 const dataCache = new Map<string, Bar[]>();
