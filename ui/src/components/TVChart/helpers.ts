@@ -1,26 +1,11 @@
 import symbolTypes from "../../mock/symbolTypes.json";
+import axios from '@/store/client';
 
-interface ParsedSymbol {
-  exchange: string;
-  symbol: string;
-}
-
-interface SymbolType {
-  name: string;
-  value: string;
-}
-
-interface ConfigurationData {
-  supported_resolutions: string[];
-  symbols_types: SymbolType[];
-  supports_marks: boolean;
-  supports_timescale_marks: boolean;
-  supports_time: boolean;
-}
-
-interface IntervalMap {
-  [key: string]: string;
-}
+import {
+  ConfigurationData,
+  IntervalMap,
+  ParsedSymbol,
+} from '@/interfaces/chartInterfaces';
 
 // Helper function to normalize timestamps for TradingView
 export function normalizeTimestamp(timestamp: number): number {
@@ -34,35 +19,23 @@ export function normalizeTimestamp(timestamp: number): number {
 
 // Makes requests to backend API
 export async function makeApiRequest(endpoint: string = '', payload: Record<string, any> = {}): Promise<any> {
-  let baseUrl = null, endpointUrl = '';
-
-  if (process.env.USE_SSE_URL === 'true') {
-    baseUrl = `${process.env.BACKEND_SERVER_URL}/api/v1`;
-    endpointUrl = endpoint;
-  } else {
-    baseUrl = 'https://api.twelvedata.com';
-    if (endpoint === 'stock-search') {
-      endpointUrl = 'symbol_search';
-    } else if (endpoint === 'time-series') {
-      endpointUrl = 'time_series';
-    }
-  }
+  const baseUrl = `${process.env.BACKEND_SERVER_URL}/api/v1`;
 
   try {
-    console.log(`[API Request]: ${baseUrl}/${endpointUrl}`, payload);
+    console.log(`[API Request]: ${baseUrl}/${endpoint}`, payload);
     
-    const response = await fetch(`${baseUrl}/${endpointUrl}`, {
+    const response = await axios(`${baseUrl}/${endpoint}`, {
       method: 'POST',
       headers: {
         'Content-Type': 'application/json'
       },
-      body: JSON.stringify(payload)
+      data: JSON.stringify(payload)
     });
     
-    if (!response.ok) {
+    if (!response.data.ok) {
       throw new Error(`API request error: ${response.status}`);
     }
-    const data = await response.json();
+    const data = await response.data.json();
     console.log(`[API Response]: Received ${data?.values?.length || 0} data points`);
     return data;
   } catch (error: any) {

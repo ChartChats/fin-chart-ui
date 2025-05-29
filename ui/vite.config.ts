@@ -19,6 +19,8 @@ export default defineConfig(({ mode }) => {
       'process.env': {
         BACKEND_SERVER_URL: env.BACKEND_SERVER_URL,
         USE_SSE_URL: env.USE_SSE_URL,
+        GOOGLE_PUBLIC_AUTH_KEY: env.GOOGLE_PUBLIC_AUTH_KEY,
+        GOOGLE_FIREBASE_AUTH_DOMAIN: env.GOOGLE_FIREBASE_AUTH_DOMAIN,
       }
     },
     server: {

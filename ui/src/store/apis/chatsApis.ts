@@ -1,10 +1,15 @@
 import _ from 'lodash';
 import moment from 'moment';
+import axios from '@/store/client';
 
 import {
   createApi,
   fetchBaseQuery,
 } from "@reduxjs/toolkit/query/react";
+
+import {
+  clientBaseQuery
+} from '@/store/clientBaseQuery';
 
 import {
   chartApi
@@ -19,14 +24,9 @@ import {
   ChartData
 } from "@/interfaces/chartInterfaces";
 
-// Get base URL from environment variable
-const BASE_URL = '/api';
-
 export const chatsApi = createApi({
   reducerPath: 'chat',
-  baseQuery: fetchBaseQuery({
-    baseUrl: BASE_URL,
-  }),
+  baseQuery: clientBaseQuery,
   tagTypes: ['Chat', 'Chats'],
   endpoints: (builder) => ({
     getChats: builder.query<Chat[], void>({
@@ -111,20 +111,20 @@ export const chatsApi = createApi({
     
         try {
           // Handle SSE stream
-          const sseResponse = await fetch(SSE_ENDPOINT, {
+          const sseResponse = await axios(SSE_ENDPOINT, {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({
+            data: JSON.stringify({
               "prompt": message,
               "thread_id": chatId
             }),
             signal: controller.signal,
           });
     
-          if (!sseResponse.body) throw new Error('No response body');
+          if (!sseResponse.data.body) throw new Error('No response body');
           
           // Stream processing setup
-          const reader = sseResponse.body.getReader();
+          const reader = sseResponse.data.body.getReader();
           const decoder = new TextDecoder();
           let buffer = '';
           let streamComplete = false;
@@ -141,11 +141,11 @@ export const chatsApi = createApi({
     
           // Check if chart already exists for this chat
           try {
-            const chartResponse = await fetch(`/api/chart/${chartId}`);
+            const chartResponse = await axios(`/api/chart/${chartId}`);
             
             // Only process if we got a successful response
-            if (chartResponse.ok) {
-              const chartData = await chartResponse.json();
+            if (chartResponse.data.ok) {
+              const chartData = await chartResponse.data.json();
               if (chartData && chartData.indicators) {
                 accumulatedIndicators = [...chartData.indicators];
                 accumulatedChartPatterns = chartData.chart_pattern ? [...chartData.chart_pattern] : [];

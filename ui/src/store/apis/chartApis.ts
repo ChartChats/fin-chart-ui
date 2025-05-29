@@ -1,11 +1,14 @@
 import {
   createApi,
-  fetchBaseQuery,
 } from "@reduxjs/toolkit/query/react";
 
 import {
   ChartData
 } from "@/interfaces/chartInterfaces";
+
+import {
+  clientBaseQuery
+} from '@/store/clientBaseQuery';
 
 // Default chart configuration
 export const DEFAULT_CHART_CONFIG = {
@@ -20,11 +23,10 @@ export const DEFAULT_CHART_CONFIG = {
 
 export const chartApi = createApi({
   reducerPath: 'chartApi',
-  baseQuery: fetchBaseQuery({
-    baseUrl: '/api',
-  }),
+  baseQuery: clientBaseQuery,
   tagTypes: ['Charts'],
   endpoints: (builder) => ({
+
     getChart: builder.query<ChartData, string>({
       query: (id) => `/chart/${id}`,
       providesTags: ['Charts']

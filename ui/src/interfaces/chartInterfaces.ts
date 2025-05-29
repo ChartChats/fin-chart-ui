@@ -116,3 +116,25 @@ export interface ChartData {
   indicators?: IndicatorProps[];
   chart_pattern?: ChartPatternProps[];
 }
+
+export interface ParsedSymbol {
+  exchange: string;
+  symbol: string;
+}
+
+export interface SymbolType {
+  name: string;
+  value: string;
+}
+
+export interface ConfigurationData {
+  supported_resolutions: string[];
+  symbols_types: SymbolType[];
+  supports_marks: boolean;
+  supports_timescale_marks: boolean;
+  supports_time: boolean;
+}
+
+export interface IntervalMap {
+  [key: string]: string;
+}
