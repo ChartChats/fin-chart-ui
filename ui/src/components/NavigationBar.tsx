@@ -4,6 +4,7 @@ import { DesktopOutlined, LineChartOutlined, MessageOutlined } from '@ant-design
 import { useTheme } from '@/contexts/ThemeContext';
 import { ThemeToggle } from './ThemeToggle';
 import { cn } from '@/lib/utils';
+import ProfileIcon from '@/components/Profile/ProfileIcon';
 
 interface NavigationBarProps {
   activeSection: 'screener' | 'charts' | 'chat';
@@ -84,7 +85,12 @@ export function NavigationBar({ activeSection, visibleSections, onSectionToggle 
 
       {/* Bottom Actions */}
       <div className="p-2 border-t" style={{ borderColor }}>
-        <ThemeToggle />
+        <div className="mt-2">
+          <ProfileIcon />
+        </div>
+        <div className="mt-2">
+          <ThemeToggle />
+        </div>
       </div>
     </div>
   );

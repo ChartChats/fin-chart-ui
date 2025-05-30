@@ -12,8 +12,7 @@ export function ThemeToggle() {
       icon={theme === 'dark' ? <SunOutlined /> : <MoonOutlined />}
       onClick={toggleTheme} 
       aria-label="Toggle theme"
-      className="w-full h-6 min-w-0 flex items-center justify-center"
-      style={{ padding: 0 }}
+      className="w-full h-8 min-w-0 flex items-center justify-center"
     />
   );
 }

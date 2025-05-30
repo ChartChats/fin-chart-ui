@@ -1,8 +1,8 @@
 import axios from 'axios';
+import { auth } from '../config/firebase';
 
-const API_URL = process.env.BACKEND_SERVER_URL || 'http://127.0.0.1:8000/api/v1';
+const API_URL = process.env.BACKEND_SERVER_URL || process.env.LLM_SERVER_URL;
 
-// Create axios instance with base URL
 export const apiClient = axios.create({
   baseURL: API_URL,
   headers: {
@@ -10,26 +10,31 @@ export const apiClient = axios.create({
   },
 });
 
-// Add request interceptor to add auth token
+// Request Interceptor
 apiClient.interceptors.request.use(
-  (config) => {
-    const token = localStorage.getItem('token');
-    if (token) {
-      config.headers.Authorization = `Bearer ${token}`;
+  async (config) => {
+    const user = auth.currentUser;
+    if (user) {
+      try {
+        const token = await user.getIdToken(true); // force refresh
+        config.headers.Authorization = `Bearer ${token}`;
+      } catch (error) {
+        console.error('Token refresh failed:', error);
+        localStorage.removeItem('token');
+        localStorage.removeItem('user');
+        window.location.reload();
+      }
     }
     return config;
   },
-  (error) => {
-    return Promise.reject(error);
-  }
+  (error) => Promise.reject(error)
 );
 
-// Add response interceptor to handle common errors
+// Response Interceptor
 apiClient.interceptors.response.use(
   (response) => response,
   (error) => {
     if (error.response?.status === 401) {
-      // Handle unauthorized access
       localStorage.removeItem('token');
       localStorage.removeItem('user');
       window.location.reload();
@@ -38,5 +43,4 @@ apiClient.interceptors.response.use(
   }
 );
 
-// Export the configured axios instance
 export default apiClient;

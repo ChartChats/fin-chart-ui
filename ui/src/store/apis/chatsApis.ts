@@ -28,6 +28,9 @@ export const chatsApi = createApi({
   reducerPath: 'chat',
   baseQuery: clientBaseQuery,
   tagTypes: ['Chat', 'Chats'],
+  refetchOnMountOrArgChange: true,
+  refetchOnFocus: false,
+  refetchOnReconnect: true,
   endpoints: (builder) => ({
     getChats: builder.query<Chat[], void>({
       query: () => {

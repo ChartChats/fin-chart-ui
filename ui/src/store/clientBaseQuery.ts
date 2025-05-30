@@ -9,9 +9,22 @@ export const clientBaseQuery: BaseQueryFn = async ({ url, method, data, params }
       data,
       params,
     });
-    return { data: result.data };
+
+    return {
+      data: result.data
+    };
   } catch (axiosError: any) {
     const err = axiosError;
+    // Don't retry on 4xx errors (client errors)
+    if (err.response?.status >= 400 && err.response?.status < 500) {
+      return {
+        error: {
+          status: err.response?.status,
+          data: err.response?.data || err.message,
+        },
+      };
+    }
+    // For 5xx errors (server errors), let RTK Query handle retries
     return {
       error: {
         status: err.response?.status || 500,
