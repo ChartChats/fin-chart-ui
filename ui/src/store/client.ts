@@ -13,18 +13,13 @@ export const apiClient = axios.create({
 // Request Interceptor
 apiClient.interceptors.request.use(
   async (config) => {
-    const user = auth.currentUser;
-    if (user) {
-      try {
-        const token = await user.getIdToken(true); // force refresh
-        config.headers.Authorization = `Bearer ${token}`;
-      } catch (error) {
-        console.error('Token refresh failed:', error);
-        localStorage.removeItem('token');
-        localStorage.removeItem('user');
-        window.location.reload();
-      }
+    const token = localStorage.getItem('token');
+    if (!token) {
+      return config;
     }
+
+    // Add token to all requests
+    config.headers.Authorization = `Bearer ${token}`;
     return config;
   },
   (error) => Promise.reject(error)
@@ -33,12 +28,36 @@ apiClient.interceptors.request.use(
 // Response Interceptor
 apiClient.interceptors.response.use(
   (response) => response,
-  (error) => {
-    if (error.response?.status === 401) {
-      localStorage.removeItem('token');
-      localStorage.removeItem('user');
-      window.location.reload();
+  async (error) => {
+    const originalRequest = error.config;
+
+    // If error is 401 and we haven't tried to refresh token yet
+    if (error.response?.status === 401 && !originalRequest._retry) {
+      originalRequest._retry = true;
+
+      try {
+        // Get current user
+        const user = auth.currentUser;
+        if (!user) {
+          throw new Error('No authenticated user');
+        }
+
+        // Force token refresh
+        const newToken = await user.getIdToken(true);
+        localStorage.setItem('token', newToken);
+
+        // Retry the original request with new token
+        originalRequest.headers.Authorization = `Bearer ${newToken}`;
+        return apiClient(originalRequest);
+      } catch (refreshError) {
+        // If refresh fails, clear storage and reload to trigger login
+        localStorage.removeItem('token');
+        localStorage.removeItem('user');
+        window.location.reload();
+        return Promise.reject(refreshError);
+      }
     }
+
     return Promise.reject(error);
   }
 );

@@ -13,10 +13,17 @@ import apiClient from "./store/client";
 function App() {
   const [showLoginModal, setShowLoginModal] = useState(false);
   const [isAuthenticated, setIsAuthenticated] = useState(false);
+  const [isLoading, setIsLoading] = useState(true);
 
-  const verifyToken = async (token: string) => {
+  const validateToken = async () => {
     try {
-      const response = await apiClient.post('/user/login', { token });
+      const token = localStorage.getItem('token');
+      if (!token) {
+        throw new Error('No token found');
+      }
+
+      // Validate token with backend
+      const response = await apiClient.get('/user/login');
       const { email, uuid } = response.data;
 
       const firebaseUser = auth.currentUser;
@@ -34,6 +41,8 @@ function App() {
       localStorage.removeItem('user');
       setShowLoginModal(true);
       setIsAuthenticated(false);
+    } finally {
+      setIsLoading(false);
     }
   };
 
@@ -42,17 +51,22 @@ function App() {
       if (user) {
         const token = await user.getIdToken(true);
         localStorage.setItem('token', token);
-        await verifyToken(token);
+        await validateToken();
       } else {
         localStorage.removeItem('token');
         localStorage.removeItem('user');
         setIsAuthenticated(false);
         setShowLoginModal(true);
+        setIsLoading(false);
       }
     });
 
     return () => unsubscribe();
   }, []);
+
+  if (isLoading) {
+    return <div>Loading...</div>;
+  }
 
   return (
     <Provider store={store}>

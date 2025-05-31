@@ -1,11 +1,16 @@
 import _ from 'lodash';
 import moment from 'moment';
 import axios from '@/store/client';
+import { v4 as uuidv4 } from 'uuid';
 
 import {
   createApi,
   fetchBaseQuery,
 } from "@reduxjs/toolkit/query/react";
+
+import {
+  getChats
+} from "@/utils/AppUtils";
 
 import {
   clientBaseQuery
@@ -28,15 +33,23 @@ export const chatsApi = createApi({
   reducerPath: 'chat',
   baseQuery: clientBaseQuery,
   tagTypes: ['Chat', 'Chats'],
-  refetchOnMountOrArgChange: true,
-  refetchOnFocus: false,
-  refetchOnReconnect: true,
   endpoints: (builder) => ({
+
     getChats: builder.query<Chat[], void>({
-      query: () => {
-        return {
-          url: '/chat/chats',
-          method: 'GET',
+      queryFn: async (_, { dispatch }) => {
+        const chatId = uuidv4();
+        try {
+          const response = await axios.get(`/user/chats`);
+          return {
+            data: getChats(response.data.chat_history)
+          };
+        } catch (error) {
+          return {
+            error: {
+              status: 'CUSTOM_ERROR',
+              error: 'Failed to create chat'
+            }
+          };
         }
       },
       providesTags: ['Chats']
@@ -45,33 +58,18 @@ export const chatsApi = createApi({
     getChat: builder.query<Chat, string>({
       query: (chatId) => {
         return {
-          url: '/chat',
+          url: `/user/chats/${chatId}`,
           method: 'GET',
-          params: {
-            chat_id: chatId
-          },
         }
       },
       providesTags: (result, error, chatId) => 
         result ? [{ type: 'Chat', id: chatId }] : ['Chat']
     }),
 
-    editChat: builder.mutation<Chat, { chatId: string, message: Partial<Chat> }>({
-      query: ({ chatId, message }) => {
-        return {
-          url: `/chat/${chatId}`,
-          method: 'PUT',
-          body: message,
-        }
-      },
-      invalidatesTags: (result, error, { chatId }) => 
-        result ? [{ type: 'Chat', id: chatId }, 'Chats'] : []
-    }),
-
     deleteChat: builder.mutation<void, string>({
       query: (chatId) => {
         return {
-          url: `/chat/${chatId}`,
+          url: `/user/chats/${chatId}`,
           method: 'DELETE',
         }
       },
@@ -79,10 +77,25 @@ export const chatsApi = createApi({
     }),
 
     createChat: builder.mutation<Chat, void>({
-      query: () => {
-        return {
-          url: '/chat/create',
-          method: 'POST',
+      queryFn: async (_, { dispatch }) => {
+        const chatId = uuidv4();
+        try {
+          const response = await axios.post(`/user/chats/${chatId}`, {
+            messages: []
+          });
+          return {
+            data: {
+              ...response.data,
+              id: chatId
+            }
+          };
+        } catch (error) {
+          return {
+            error: {
+              status: 'CUSTOM_ERROR',
+              error: 'Failed to create chat'
+            }
+          };
         }
       },
       invalidatesTags: ['Chats']
@@ -90,6 +103,8 @@ export const chatsApi = createApi({
 
     addMessage: builder.mutation<void, { chatId: string; message: string }>({  
       queryFn: async ({ chatId, message }, { dispatch }) => {
+        let chatMessages: Message[] = [];
+
         // Create abort controller for stream cancellation
         const controller = new AbortController();
     
@@ -99,6 +114,7 @@ export const chatsApi = createApi({
           role: 'user',
           timestamp: new Date().toISOString()
         };
+        chatMessages.push(userMessage);
     
         const patchResult = dispatch(
           chatsApi.util.updateQueryData('getChat', chatId, (draft) => {
@@ -107,27 +123,27 @@ export const chatsApi = createApi({
           })
         );
 
-        const SSE_ENDPOINT = process.env.USE_SSE_URL === 'true'
-          ? `${process.env.BACKEND_SERVER_URL}/api/v1/llm/response`
-          : `/api/chat/${chatId}/message`;
-
+        const SSE_ENDPOINT = `${process.env.BACKEND_SERVER_URL}/llm/response`;
     
         try {
           // Handle SSE stream
-          const sseResponse = await axios(SSE_ENDPOINT, {
+          const sseResponse = await fetch(SSE_ENDPOINT, {
             method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
-            data: JSON.stringify({
+            headers: {
+              'Content-Type': 'application/json',
+              'Authorization': localStorage.getItem('token'),
+            },
+            body: JSON.stringify({
               "prompt": message,
               "thread_id": chatId
             }),
             signal: controller.signal,
           });
     
-          if (!sseResponse.data.body) throw new Error('No response body');
+          if (!sseResponse.body) throw new Error('No response body');
           
           // Stream processing setup
-          const reader = sseResponse.data.body.getReader();
+          const reader = sseResponse.body.getReader();
           const decoder = new TextDecoder();
           let buffer = '';
           let streamComplete = false;
@@ -203,16 +219,17 @@ export const chatsApi = createApi({
                   // Process normal messages
                   dispatch(
                     chatsApi.util.updateQueryData('getChat', chatId, (draft) => {
-    
                       if (
                         parsedJsonData.action_type === 'llm_response' &&
                         !_.isEmpty(parsedJsonData.message)
                       ) {
-                        draft.messages.push({
+                        const systemMessage: Message = {
                           role: 'system',
                           content: parsedJsonData.message,
                           timestamp: new Date().toISOString()
-                        });
+                        };
+                        chatMessages.push(systemMessage);
+                        draft.messages.push(systemMessage);
                       }
     
                       if (parsedJsonData.action_type === 'plot_indicator') {
@@ -306,6 +323,18 @@ export const chatsApi = createApi({
                       }
                     })
                   );
+
+                  // Save message to chat endpoint if we have a system message
+                  if (chatMessages) {
+                    try {
+                      await axios.post(`/user/chats/${chatId}`, {
+                        role: 'system',
+                        messages: chatMessages
+                      });
+                    } catch (error) {
+                      console.error('Error saving message:', error);
+                    }
+                  }
                 } catch (error) {
                   console.error('Error processing SSE event:', error);
                 }
@@ -342,7 +371,6 @@ export const chatsApi = createApi({
 export const {
   useGetChatsQuery,
   useGetChatQuery,
-  useEditChatMutation,
   useDeleteChatMutation,
   useCreateChatMutation,
   useAddMessageMutation,

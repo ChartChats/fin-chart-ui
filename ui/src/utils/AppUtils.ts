@@ -4,6 +4,10 @@ import {
   ChartPatternProps
 } from '@/interfaces/chartInterfaces';
 
+import {
+  Chat
+} from '@/interfaces/chatInterfaces';
+
 export const getChartPatternFunction = (pattern: ChartPatternProps): string => {
   // 4 functions to choose from -> createShape, createMultipointShape, createExecutionShape and createAnchoredShape
   const shape = pattern.shape;
@@ -37,3 +41,16 @@ export const colorMap = {
   "purple": "rgb(153, 0, 255)",
   "magenta": "rgb(255, 0, 255)",
 }
+
+export const getChats = (chatsData: [string, any[]][] = []): Chat[] => {
+  return _.map(chatsData, chat => {
+    const chatId = chat[0] || '';
+    return {
+      id: chatId,
+      title: `Chat ${chatId?.substring(0, 8)}`,
+      messages: chat[1],
+      createdAt: new Date().toISOString(),
+      updatedAt: new Date().toISOString()
+    }
+  });
+};

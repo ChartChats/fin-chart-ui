@@ -19,3 +19,13 @@ export interface Chat {
 export interface ChatResponse {
   messages: Message[];
 }
+
+export interface ChatWidgetProps {
+  chatId?: string;
+}
+
+export interface ChatProps {
+  id?: string;
+  title?: string;
+  messages?: any[];
+}

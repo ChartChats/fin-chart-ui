@@ -14,8 +14,9 @@ const LoginModal: React.FC<LoginModalProps> = ({ onClose }) => {
     try {
       const result = await signInWithPopup(auth, googleProvider);
       const user = result.user;
-
-      const token = await user.getIdToken();
+      const token = await user.getIdToken(true);
+      
+      // Store token and user info
       localStorage.setItem('token', token);
       localStorage.setItem(
         'user',

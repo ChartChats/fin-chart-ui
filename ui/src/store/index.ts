@@ -23,7 +23,6 @@ export {
   useCreateChatMutation,
   useDeleteChatMutation,
   useAddMessageMutation,
-  useEditChatMutation,
   useGetChatsQuery,
 } from './apis/chatsApis';
 
