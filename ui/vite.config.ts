@@ -7,13 +7,13 @@ export default defineConfig(({ mode }) => {
   // Load env file based on `mode` in the current directory.
   const env = loadEnv(mode, process.cwd(), '');
   
-  const isMock = env.MOCK_DATA === 'true';
+  // const isMock = env.MOCK_DATA === 'true';
   const serverUrl = 'http://localhost:8000';
 
   return {
     plugins: [
       react(),
-      isMock && mockApiPlugin()
+      mockApiPlugin()
     ],
     define: {
       'process.env': {
