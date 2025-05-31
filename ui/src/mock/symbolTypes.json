@@ -1,0 +1,110 @@
+[
+  {
+    "name": "All",
+    "value": "All"
+  },
+  {
+    "name": "Agricultural Product",
+    "value": "Agricultural Product"
+  },
+  {
+    "name": "American Depositary Receipt",
+    "value": "American Depositary Receipt"
+  },
+  {
+    "name": "Bond",
+    "value": "Bond"
+  },
+  {
+    "name": "Bond Fund",
+    "value": "Bond Fund"
+  },
+  {
+    "name": "Closed-end Fund",
+    "value": "Closed-end Fund"
+  },
+  {
+    "name": "Common Stock",
+    "value": "Common Stock"
+  },
+  {
+    "name": "Depositary Receipt",
+    "value": "Depositary Receipt"
+  },
+  {
+    "name": "Digital Currency",
+    "value": "Digital Currency"
+  },
+  {
+    "name": "Energy Resource",
+    "value": "Energy Resource"
+  },
+  {
+    "name": "ETF",
+    "value": "ETF"
+  },
+  {
+    "name": "Exchange-Traded Note",
+    "value": "Exchange-Traded Note"
+  },
+  {
+    "name": "Global Depositary Receipt",
+    "value": "Global Depositary Receipt"
+  },
+  {
+    "name": "Index",
+    "value": "Index"
+  },
+  {
+    "name": "Industrial Metal",
+    "value": "Industrial Metal"
+  },
+  {
+    "name": "Limited Partnership",
+    "value": "Limited Partnership"
+  },
+  {
+    "name": "Livestock",
+    "value": "Livestock"
+  },
+  {
+    "name": "Mutual Fund",
+    "value": "Mutual Fund"
+  },
+  {
+    "name": "Physical Currency",
+    "value": "Physical Currency"
+  },
+  {
+    "name": "Precious Metal",
+    "value": "Precious Metal"
+  },
+  {
+    "name": "Preferred Stock",
+    "value": "Preferred Stock"
+  },
+  {
+    "name": "REIT",
+    "value": "REIT"
+  },
+  {
+    "name": "Right",
+    "value": "Right"
+  },
+  {
+    "name": "Structured Product",
+    "value": "Structured Product"
+  },
+  {
+    "name": "Trust",
+    "value": "Trust"
+  },
+  {
+    "name": "Unit",
+    "value": "Unit"
+  },
+  {
+    "name": "Warrant",
+    "value": "Warrant"
+  }
+]

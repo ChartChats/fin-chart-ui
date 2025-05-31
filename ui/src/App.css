@@ -1,0 +1,173 @@
+#root {
+  max-width: 1280px;
+  margin: 0 auto;
+  padding: 2rem;
+  text-align: center;
+}
+
+.logo {
+  height: 6em;
+  padding: 1.5em;
+  will-change: filter;
+  transition: filter 300ms;
+}
+.logo:hover {
+  filter: drop-shadow(0 0 2em #646cffaa);
+}
+.logo.react:hover {
+  filter: drop-shadow(0 0 2em #61dafbaa);
+}
+
+@keyframes logo-spin {
+  from {
+    transform: rotate(0deg);
+  }
+  to {
+    transform: rotate(360deg);
+  }
+}
+
+@media (prefers-reduced-motion: no-preference) {
+  a:nth-of-type(2) .logo {
+    animation: logo-spin infinite 20s linear;
+  }
+}
+
+.card {
+  padding: 2em;
+}
+
+.read-the-docs {
+  color: #888;
+}
+
+/* Chat interface styles */
+:root {
+  --background-color: #ffffff;
+  --input-background: #ffffff;
+  --border-color: #e5e7eb;
+  --text-primary: #000000;
+  --text-secondary: #71717a;
+  --header-background: #f3f3f3;
+  --card-background: #ffffff;
+  --primary-color: #555555;
+  --primary-hover: #333333;
+}
+
+.dark {
+  --background-color: #1A1F2C;
+  --input-background: #2d2d2d;
+  --border-color: #3f3f46;
+  --text-primary: #ffffff;
+  --text-secondary: #a1a1aa;
+  --header-background: #333333;
+  --card-background: #1A1F2C;
+  --primary-color: #888888;
+  --primary-hover: #666666;
+}
+
+/* Ant Design Button Overrides */
+.ant-btn-primary {
+  background-color: var(--primary-color) !important;
+}
+
+.ant-btn-primary:hover {
+  background-color: var(--primary-hover) !important;
+}
+
+/* Chat components styling */
+.chat-list-container, .chat-box-container {
+  background-color: var(--card-background);
+  color: var(--text-primary);
+}
+
+.draggable-handle {
+  color: var(--text-primary);
+  font-weight: 500;
+}
+
+/* Chart Container Styles */
+.chart-container {
+  padding: 1rem;
+}
+
+.add-chart-button {
+  background-color: #2563eb;
+  color: white;
+  padding: 0.5rem 1rem;
+  border-radius: 0.375rem;
+  border: none;
+  cursor: pointer;
+  font-weight: 500;
+  margin-bottom: 1rem;
+}
+
+.add-chart-button:hover {
+  background-color: #1d4ed8;
+}
+
+.charts-grid {
+  display: grid;
+  grid-template-columns: repeat(auto-fit, minmax(300px, 1fr));
+  gap: 1rem;
+}
+
+.chart-wrapper {
+  border: 1px solid #e5e7eb;
+  border-radius: 0.5rem;
+  overflow: hidden;
+  background-color: white;
+  box-shadow: 0 1px 3px rgba(0, 0, 0, 0.1);
+}
+
+.chart-header {
+  display: flex;
+  justify-content: space-between;
+  align-items: center;
+  padding: 0.75rem 1rem;
+  border-bottom: 1px solid #e5e7eb;
+}
+
+.chart-header h3 {
+  margin: 0;
+  font-size: 1rem;
+  font-weight: 500;
+}
+
+.remove-chart-button {
+  background: none;
+  border: none;
+  color: #6b7280;
+  cursor: pointer;
+  padding: 0.25rem;
+  border-radius: 0.25rem;
+}
+
+.remove-chart-button:hover {
+  background-color: #f3f4f6;
+  color: #ef4444;
+}
+
+.chart-content {
+  padding: 1rem;
+  min-height: 300px;
+}
+
+.chart-placeholder {
+  padding: 1rem;
+  background-color: #f9fafb;
+  border-radius: 0.375rem;
+  text-align: center;
+}
+
+.empty-chart-placeholder {
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  height: 100%;
+  min-height: 300px;
+  color: #6b7280;
+  text-align: center;
+  background-color: #f9fafb;
+  border-radius: 0.375rem;
+}

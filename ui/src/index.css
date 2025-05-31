@@ -1,0 +1,276 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+@layer base {
+  :root {
+    --background: 0 0% 100%;
+    --foreground: 222.2 84% 4.9%;
+
+    --card: 0 0% 100%;
+    --card-foreground: 222.2 84% 4.9%;
+
+    --popover: 0 0% 100%;
+    --popover-foreground: 222.2 84% 4.9%;
+
+    --primary: 221.2 83.2% 53.3%;
+    --primary-foreground: 210 40% 98%;
+
+    --secondary: 210 40% 96.1%;
+    --secondary-foreground: 222.2 47.4% 11.2%;
+
+    --muted: 210 40% 96.1%;
+    --muted-foreground: 215.4 16.3% 46.9%;
+
+    --accent: 210 40% 96.1%;
+    --accent-foreground: 222.2 47.4% 11.2%;
+
+    --destructive: 0 84.2% 60.2%;
+    --destructive-foreground: 210 40% 98%;
+
+    --border: 214.3 31.8% 91.4%;
+    --input: 214.3 31.8% 91.4%;
+    --ring: 222.2 84% 4.9%;
+
+    --radius: 0.5rem;
+
+    --sidebar-background: 0 0% 98%;
+    --sidebar-foreground: 240 5.3% 26.1%;
+    --sidebar-primary: 240 5.9% 10%;
+    --sidebar-primary-foreground: 0 0% 98%;
+    --sidebar-accent: 240 4.8% 95.9%;
+    --sidebar-accent-foreground: 240 5.9% 10%;
+    --sidebar-border: 220 13% 91%;
+    --sidebar-ring: 217.2 91.2% 59.8%;
+
+    --title-bar: 220 13% 91%;
+    --title-bar-foreground: 222.2 84% 4.9%;
+  }
+
+  .dark {
+    --background: 224 71% 4%;
+    --foreground: 213 31% 91%;
+
+    --card: 224 71% 4%;
+    --card-foreground: 213 31% 91%;
+
+    --popover: 224 71% 4%;
+    --popover-foreground: 213 31% 91%;
+
+    --primary: 217.2 91.2% 59.8%;
+    --primary-foreground: 222.2 47.4% 11.2%;
+
+    --secondary: 222.2 47.4% 11.2%;
+    --secondary-foreground: 210 40% 98%;
+
+    --muted: 223 47% 11%;
+    --muted-foreground: 215.4 16.3% 56.9%;
+
+    --accent: 216 34% 17%;
+    --accent-foreground: 210 40% 98%;
+
+    --destructive: 0 62.8% 30.6%;
+    --destructive-foreground: 210 40% 98%;
+
+    --border: 217.2 32.6% 17.5%;
+    --input: 217.2 32.6% 17.5%;
+    --ring: 212.7 26.8% 83.9%;
+
+    --sidebar-background: 240 5.9% 10%;
+    --sidebar-foreground: 240 4.8% 95.9%;
+    --sidebar-primary: 224.3 76.3% 48%;
+    --sidebar-primary-foreground: 0 0% 100%;
+    --sidebar-accent: 240 3.7% 15.9%;
+    --sidebar-accent-foreground: 240 4.8% 95.9%;
+    --sidebar-border: 240 3.7% 15.9%;
+    --sidebar-ring: 217.2 91.2% 59.8%;
+
+    --title-bar: 240 3.7% 15.9%;
+    --title-bar-foreground: 213 31% 91%;
+  }
+}
+
+@layer base {
+  * {
+    @apply border-border;
+  }
+
+  body {
+    @apply bg-background text-foreground;
+    font-feature-settings: "rlig" 1, "calt" 1;
+    margin: 0;
+    padding: 0;
+    height: 100vh;
+    width: 100vw;
+    overflow: auto;
+    background: #f8fafc;
+  }
+  
+  html, #root {
+    height: 100%;
+    width: 100%;
+    margin: 0;
+    padding: 0;
+    background: #f8fafc;
+  }
+}
+
+/* Hide scrollbar for cleaner UI */
+.hide-scrollbar::-webkit-scrollbar {
+  display: none;
+}
+
+.hide-scrollbar {
+  -ms-overflow-style: none;
+  scrollbar-width: none;
+}
+
+/* Title bar styles */
+.title-bar {
+  @apply bg-[hsl(var(--title-bar))] text-[hsl(var(--title-bar-foreground))] px-4 py-2 rounded-t-lg border-b border-border;
+  font-weight: 500;
+}
+
+/* Tabs styles */
+.custom-tabs .ant-tabs-tab-active {
+  border: 1.5px solid #d1d5db !important;
+  border-bottom: none !important;
+}
+
+.dark .custom-tabs .ant-tabs-tab-active {
+  border: 1.5px solid #c9c7c7 !important;
+  border-bottom: none !important;
+  color: #3f3f46 !important;
+}
+
+/* Resizable panel styles */
+.resizable-layout {
+  display: flex;
+  width: 100%;
+  height: 100%;
+  overflow: hidden;
+}
+
+.resizable-panel {
+  position: relative;
+  height: 100%;
+  overflow: hidden;
+  flex-shrink: 0;
+  transition: width 100ms ease;
+}
+
+.resizable-panel.resizing {
+  transition: none;
+}
+
+.resize-handle {
+  position: absolute;
+  right: -6px;
+  top: 0;
+  bottom: 0;
+  width: 12px;
+  cursor: col-resize;
+  z-index: 10;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  background: transparent;
+}
+
+.resize-handle::after {
+  content: '';
+  width: 2px;
+  height: 100%;
+  background: rgba(0, 0, 0, 0.1);
+  transition: all 150ms ease;
+}
+
+.resize-handle.at-limit::after {
+  background: rgba(255, 87, 87, 0.3) !important;
+}
+
+.resize-handle:hover::after {
+  width: 4px;
+  background: rgba(0, 0, 0, 0.2);
+}
+
+.resize-handle.active::after {
+  width: 4px;
+  background: rgba(0, 0, 0, 0.3);
+  box-shadow: 0 0 0 1px rgba(0, 0, 0, 0.05);
+}
+
+.dark .resize-handle::after {
+  background: rgba(255, 255, 255, 0.1);
+}
+
+.dark .resize-handle.at-limit::after {
+  background: rgba(255, 87, 87, 0.3) !important;
+}
+
+.dark .resize-handle:hover::after {
+  background: rgba(255, 255, 255, 0.2);
+}
+
+.dark .resize-handle.active::after {
+  background: rgba(255, 255, 255, 0.3);
+  box-shadow: 0 0 0 1px rgba(255, 255, 255, 0.05);
+}
+
+/* Navigation bar transitions */
+.nav-btn {
+  transition: all 0.2s ease-in-out;
+}
+
+.nav-btn:hover {
+  transform: translateY(-1px);
+}
+
+.nav-collapse-btn {
+  opacity: 0.6;
+  transition: opacity 0.2s ease-in-out;
+}
+
+.nav-collapse-btn:hover {
+  opacity: 1;
+}
+
+/* Chat message styles */
+.chat-message-actions {
+  display: flex;
+  opacity: 0;
+  transition: opacity 0.2s ease-in-out;
+}
+
+.group:hover .chat-message-actions {
+  opacity: 1;
+  flex-direction: row;
+}
+
+/* Message button hover states */
+.message-action-btn {
+  color: var(--text-secondary);
+  transition: color 0.2s ease-in-out, transform 0.2s ease-in-out;
+}
+
+.message-action-btn:hover {
+  color: var(--text-primary);
+  transform: scale(1.1);
+}
+
+/* Style specific action buttons */
+.thumbs-up:hover {
+  color: #10B981;
+}
+
+.thumbs-down:hover {
+  color: #EF4444;
+}
+
+.edit-btn:hover {
+  color: #3B82F6;
+}
+
+.copy-btn:hover {
+  color: #6366F1;
+}
