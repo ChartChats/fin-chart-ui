@@ -2,29 +2,38 @@ import axios from '@/store/client';
 import { BaseQueryFn } from '@reduxjs/toolkit/query';
 
 export const clientBaseQuery: BaseQueryFn = async ({ url, method, data, params }) => {
+  console.log('Making request:', { url, method, data, params });
+  
+  // Always ensure we return a proper response object
+  if (!url) {
+    return {
+      error: {
+        status: 400,
+        data: 'URL is required',
+      },
+    };
+  }
+
   try {
     const result = await axios({
       url,
-      method,
+      method: method || 'GET', // Default to GET if method not specified
       data,
       params,
     });
 
+    console.log('Request successful:', result.data);
     return {
       data: result.data
     };
   } catch (axiosError: any) {
     const err = axiosError;
-    // Don't retry on 4xx errors (client errors)
-    if (err.response?.status >= 400 && err.response?.status < 500) {
-      return {
-        error: {
-          status: err.response?.status,
-          data: err.response?.data || err.message,
-        },
-      };
-    }
-    // For 5xx errors (server errors), let RTK Query handle retries
+    console.error('Request failed:', { 
+      status: err.response?.status,
+      data: err.response?.data,
+      message: err.message 
+    });
+    
     return {
       error: {
         status: err.response?.status || 500,

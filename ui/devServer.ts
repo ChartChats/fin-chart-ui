@@ -140,11 +140,11 @@ export const mockApiPlugin = () => {
       };
 
       // Apply the handlers to the router
-      router.get('/chart/:id', getChartHandler);
-      router.get('/chart', getChartsHandler);
-      router.post('/chart', postChartHandler);
-      router.patch('/chart/:id', patchChartHandler);
-      router.delete('/chart/:id', deleteChartHandler);
+      router.get('/charts/:id', getChartHandler);
+      router.get('/charts', getChartsHandler);
+      router.post('/charts', postChartHandler);
+      router.patch('/charts/:id', patchChartHandler);
+      router.delete('/charts/:id', deleteChartHandler);
 
       // Create chats directory if it doesn't exist
       const chatsDir = path.join(mockFile, 'chats');

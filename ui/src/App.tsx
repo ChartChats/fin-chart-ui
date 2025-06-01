@@ -9,6 +9,9 @@ import LoginModal from "@/components/Login/LoginModal";
 import { auth } from "./config/firebase";
 import { onAuthStateChanged } from "firebase/auth";
 import apiClient from "./store/client";
+import {
+  Spin
+} from "antd";
 
 function App() {
   const [showLoginModal, setShowLoginModal] = useState(false);
@@ -64,10 +67,6 @@ function App() {
     return () => unsubscribe();
   }, []);
 
-  if (isLoading) {
-    return <div>Loading...</div>;
-  }
-
   return (
     <Provider store={store}>
       <ThemeProvider>
@@ -76,7 +75,14 @@ function App() {
             <LoginModal onClose={() => setShowLoginModal(false)} />
           )}
           <Routes>
-            <Route path="/" element={<Dashboard />} />
+            <Route
+              path="/"
+              element={
+                isLoading
+                  ? <Spin><Dashboard /></Spin>
+                  : <Dashboard />
+              }
+            />
             <Route path="*" element={<NotFound />} />
           </Routes>
         </BrowserRouter>

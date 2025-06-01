@@ -8,7 +8,7 @@ export default defineConfig(({ mode }) => {
   const env = loadEnv(mode, process.cwd(), '');
   
   const isMock = env.MOCK_DATA === 'true';
-  const serverUrl = 'http://localhost:8000';
+  const serverUrl = env.BACKEND_SERVER_URL;
 
   return {
     plugins: [

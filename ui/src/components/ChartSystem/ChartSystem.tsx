@@ -4,9 +4,14 @@ import { ChartDisplay } from "./ChartDisplay";
 import { useIsMobile } from "@/hooks/use-mobile";
 import { useGetChartsQuery, useAddChartMutation, useRemoveChartMutation } from "@/store";
 import { ChartData } from "@/interfaces/chartInterfaces";
+import { v4 as uuid4 } from 'uuid';
 
 export function ChartSystem() {
-  const { data: activeCharts = [], isLoading } = useGetChartsQuery();
+  const {
+    data: activeCharts = [],
+    isLoading
+  } = useGetChartsQuery(undefined, { skip: false, refetchOnMountOrArgChange: true });
+
   const [removeChart] = useRemoveChartMutation();
   const [addChart] = useAddChartMutation();
   
@@ -25,11 +30,10 @@ export function ChartSystem() {
   }, [activeCharts]);
 
   const activeChart = activeCharts.find(chart => chart.id === activeChartId);
-  console.log('activeChart', activeChart);
   
   const handleAddNewChart = async () => {
     const newChart: ChartData = {
-      id: `chart-${Date.now()}-${Math.random().toString(36).substr(2, 9)}`,
+      id: uuid4(),
       type: "line",
       title: `#${activeCharts.length + 1}`,
       symbol: 'AAPL',

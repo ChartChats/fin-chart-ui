@@ -1,3 +1,6 @@
+import axios from '@/store/client';
+import _ from 'lodash';
+
 import {
   createApi,
 } from "@reduxjs/toolkit/query/react";
@@ -28,43 +31,100 @@ export const chartApi = createApi({
   endpoints: (builder) => ({
 
     getChart: builder.query<ChartData, string>({
-      query: (id) => `/chart/${id}`,
+      queryFn: async (chartId, { dispatch }) => {
+        try {
+          const response = await axios.get(`/user/charts/${chartId}`);
+          return {
+            data: response.data[chartId]
+          };
+        } catch (error) {
+          return {
+            error: {
+              status: 'CUSTOM_ERROR',
+              error: 'Failed to create chart'
+            }
+          };
+        }
+      },
       providesTags: ['Charts']
     }),
 
     getCharts: builder.query<ChartData[], void>({
-      query: () => '/chart',
-      providesTags: ['Charts']
+      queryFn: async (chart, { dispatch }) => {
+        try {
+          const response = await axios.get('/user/charts');
+          return {
+            data: _.map(response.data.charts, chart => chart[1])
+          };
+        } catch (error) {
+          return {
+            error: {
+              status: 'CUSTOM_ERROR',
+              error: 'Failed to create chart'
+            }
+          };
+        }
+      },
+      providesTags: ['Charts'],
     }),
     
     addChart: builder.mutation<ChartData, ChartData>({
-      query: (chart) => ({
-        url: '/chart',
-        method: 'POST',
-        body: {
-          ...DEFAULT_CHART_CONFIG,
-          ...chart
+      queryFn: async (chart, { dispatch }) => {
+        try {
+          const chartId = chart.id;
+          const chartPayload = {
+            "chart_data": {
+              ...DEFAULT_CHART_CONFIG,
+              ...chart,
+            }
+          };
+          const response = await axios.post(`/user/charts/${chartId}`, chartPayload);
+          return {
+            data: response.data
+          };
+        } catch (error) {
+          return {
+            error: {
+              status: 'CUSTOM_ERROR',
+              error: 'Failed to create chart'
+            }
+          };
         }
-      }),
+      },
       invalidatesTags: ['Charts']
     }),
     
     removeChart: builder.mutation<void, string>({
       query: (id) => ({
-        url: `/chart/${id}`,
+        url: `/user/charts/${id}`,
         method: 'DELETE'
       }),
       invalidatesTags: ['Charts']
     }),
     
     updateChart: builder.mutation<ChartData, { id: string, data: Partial<ChartData> }>({  
-      query: ({ id, data }) => ({
-        url: `/chart/${id}`,
-        method: 'PATCH',
-        body: { data }  // Wrap the data in a data property
-      }),
+      queryFn: async ({ id, data }, { dispatch }) => {
+        try {
+          const response = await axios.post(`/user/charts/${id}`, {
+            "chart_data": {
+              id,
+              ...data
+            }
+          });
+          return {
+            data: response.data
+          };
+        } catch (error) {
+          return {
+            error: {
+              status: 'CUSTOM_ERROR',
+              error: 'Failed to update chart'
+            }
+          };
+        }
+      },
       invalidatesTags: ['Charts']
-    })
+    }),
   }),
 });
 

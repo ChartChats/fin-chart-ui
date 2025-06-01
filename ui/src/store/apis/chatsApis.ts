@@ -37,11 +37,11 @@ export const chatsApi = createApi({
 
     getChats: builder.query<Chat[], void>({
       queryFn: async (_, { dispatch }) => {
-        const chatId = uuidv4();
         try {
           const response = await axios.get(`/user/chats`);
+          const data = getChats(response.data.chat_history);
           return {
-            data: getChats(response.data.chat_history)
+            data
           };
         } catch (error) {
           return {
@@ -55,11 +55,23 @@ export const chatsApi = createApi({
       providesTags: ['Chats']
     }),
 
-    getChat: builder.query<Chat, string>({
-      query: (chatId) => {
-        return {
-          url: `/user/chats/${chatId}`,
-          method: 'GET',
+    getChat: builder.query<Partial<Chat>, string>({
+      queryFn: async (chatId, { dispatch }) => {
+        try {
+          const response = await axios.get(`/user/chats/${chatId}`);
+          return {
+            data: {
+              id: chatId,
+              messages: response.data[chatId]
+            }
+          };
+        } catch (error) {
+          return {
+            error: {
+              status: 'CUSTOM_ERROR',
+              error: 'Failed to create chat'
+            }
+          };
         }
       },
       providesTags: (result, error, chatId) => 
@@ -103,8 +115,6 @@ export const chatsApi = createApi({
 
     addMessage: builder.mutation<void, { chatId: string; message: string }>({  
       queryFn: async ({ chatId, message }, { dispatch }) => {
-        let chatMessages: Message[] = [];
-
         // Create abort controller for stream cancellation
         const controller = new AbortController();
     
@@ -114,7 +124,6 @@ export const chatsApi = createApi({
           role: 'user',
           timestamp: new Date().toISOString()
         };
-        chatMessages.push(userMessage);
     
         const patchResult = dispatch(
           chatsApi.util.updateQueryData('getChat', chatId, (draft) => {
@@ -122,6 +131,31 @@ export const chatsApi = createApi({
             draft.messages.push(userMessage);
           })
         );
+
+        // Initialize accumulators
+        let systemMessageContent = '';
+        let systemMessageCreated = false;
+        let chartUpdates: Partial<ChartData> & {
+          indicators: any[];
+          chart_pattern: any[];
+        } = {
+          indicators: [],
+          chart_pattern: [],
+        };
+        let chartExistsInitially = false;
+        const chartId = chatId; // Use chatId as chartId
+
+        // Check if chart exists
+        try {
+          const chartResponse = await axios(`/user/charts/${chartId}`);
+          if (chartResponse.data && chartResponse.data.indicators) {
+            chartUpdates.indicators = [...chartResponse.data.indicators];
+            chartUpdates.chart_pattern = [...(chartResponse.data.chart_pattern || [])];
+            chartExistsInitially = true;
+          }
+        } catch (error) {
+          console.log('Chart not found, will create new if needed');
+        }
 
         const SSE_ENDPOINT = `${process.env.BACKEND_SERVER_URL}/llm/response`;
     
@@ -131,7 +165,7 @@ export const chatsApi = createApi({
             method: 'POST',
             headers: {
               'Content-Type': 'application/json',
-              'Authorization': localStorage.getItem('token'),
+              'Authorization': localStorage.getItem('token') || '',
             },
             body: JSON.stringify({
               "prompt": message,
@@ -150,40 +184,6 @@ export const chatsApi = createApi({
           let lastActivityTime = Date.now();
           const STREAM_TIMEOUT = 50000; // 50 seconds timeout
           const ACTIVITY_CHECK_INTERVAL = 1000; // Check every second
-    
-          // Use chatId directly as chartId to establish 1:1 relationship
-          // Key change: Use chatId as chartId
-          const chartId = chatId;
-          let chartCreatedForChat = false;
-          let accumulatedIndicators: Array<any> = [];
-          let accumulatedChartPatterns: Array<any> = [];
-    
-          // Check if chart already exists for this chat
-          try {
-            const chartResponse = await axios(`/api/chart/${chartId}`);
-            
-            // Only process if we got a successful response
-            if (chartResponse.data.ok) {
-              const chartData = await chartResponse.data.json();
-              if (chartData && chartData.indicators) {
-                accumulatedIndicators = [...chartData.indicators];
-                accumulatedChartPatterns = chartData.chart_pattern ? [...chartData.chart_pattern] : [];
-                chartCreatedForChat = true;
-              }
-            } else if (chartResponse.status === 404) {
-              // This is expected if chart doesn't exist yet
-              console.log(`Chart ${chartId} not found, will create new one if needed`);
-              chartCreatedForChat = false;
-            } else {
-              // Handle other error statuses
-              console.error(`Error fetching chart: ${chartResponse.status}`);
-            }
-          } catch (error) {
-            // Handle network errors or other exceptions
-            console.error('Error checking chart existence:', error);
-            // Continue with creating a new chart if needed
-            chartCreatedForChat = false;
-          }
     
           // Set up timeout check
           const timeoutCheck = setInterval(() => {
@@ -215,125 +215,64 @@ export const chatsApi = createApi({
                 try {
                   const jsonData = event.replace(/^data: /, '');
                   const parsedJsonData = JSON.parse(jsonData);
-    
-                  // Process normal messages
-                  dispatch(
-                    chatsApi.util.updateQueryData('getChat', chatId, (draft) => {
-                      if (
-                        parsedJsonData.action_type === 'llm_response' &&
-                        !_.isEmpty(parsedJsonData.message)
-                      ) {
-                        const systemMessage: Message = {
-                          role: 'system',
-                          content: parsedJsonData.message,
-                          timestamp: new Date().toISOString()
-                        };
-                        chatMessages.push(systemMessage);
-                        draft.messages.push(systemMessage);
-                      }
-    
-                      if (parsedJsonData.action_type === 'plot_indicator') {
-                        // Add new indicators to our accumulated array
-                        if (parsedJsonData.indicators && parsedJsonData.indicators.length > 0) {
-                          // Merge new indicators with existing ones, avoiding duplicates
-                          const newIndicators = parsedJsonData.indicators;
-                          
-                          // Add only indicators that don't already exist (based on name and value)
-                          newIndicators.forEach((newInd: { name: any; value: any; }) => {
-                            const exists = accumulatedIndicators.some(existingInd => 
-                              existingInd.name === newInd.name && existingInd.value === newInd.value
-                            );
-                            
-                            if (!exists) {
-                              accumulatedIndicators.push(newInd);
-                            }
-                          });
-                        }
-                      }
 
-                      if (parsedJsonData.action_type === 'plot_chart_pattern') {
-                        // Add new chart patterns to our accumulated array
-                        if (parsedJsonData.chart_pattern && parsedJsonData.chart_pattern.length > 0) {
-                          // Merge new chart patterns with existing ones, avoiding duplicates
-                          const newChartPatterns = parsedJsonData.chart_pattern;
-                          
-                          // Add only chart patterns that don't already exist (based on name and value)
-                          newChartPatterns.forEach((pattern: any) => {
-                            accumulatedChartPatterns.push(pattern);
+                  // Handle LLM response (accumulate content)
+                  if (parsedJsonData.action_type === 'llm_response' && parsedJsonData.message) {
+                    systemMessageContent += parsedJsonData.message;
+                    
+                    dispatch(
+                      chatsApi.util.updateQueryData('getChat', chatId, (draft) => {
+                        if (!systemMessageCreated) {
+                          // Create system message if it doesn't exist
+                          draft.messages.push({
+                            role: 'system',
+                            content: systemMessageContent,
+                            timestamp: new Date().toISOString()
                           });
-                        }
-                      }
-  
-                      // if the action type is inidicator or pattern then  only update the chart or create the chart
-                      if (
-                        (parsedJsonData.action_type === 'plot_indicator' || parsedJsonData.action_type === 'plot_chart_pattern') &&
-                        !chartCreatedForChat
-                      ) {
-                        // Create new chart if we haven't created one yet for this chat session
-                        const chartData: ChartData = {
-                          id: chartId, // Using chatId as chartId
-                          type: 'line',
-                          title: parsedJsonData.description || '',
-                          symbol: parsedJsonData.ticker,
-                          timeframe: parsedJsonData.interval || 'daily',
-                          exchange: parsedJsonData.exchange || '',
-                          description: parsedJsonData.description || '',
-                          data: [],
-                          indicators: accumulatedIndicators,
-                          chart_pattern: accumulatedChartPatterns,
-                          date_from: `${moment(parsedJsonData.from_date).unix()}`,
-                          date_to: `${moment(parsedJsonData.to_date).unix()}`,
-                        };
-                        dispatch(chartApi.endpoints.addChart.initiate(chartData));
-                        chartCreatedForChat = true;
-                      } else {
-                        // Update existing chart with all accumulated indicators
-                        dispatch(chartApi.endpoints.updateChart.initiate({
-                          id: chartId,
-                          data: {
-                            indicators: accumulatedIndicators,
-                            chart_pattern: accumulatedChartPatterns,
-                            // Update other chart properties if they've changed
-                            ...(
-                              parsedJsonData.ticker &&
-                              { symbol: parsedJsonData.ticker }
-                            ),
-                            ...(
-                              parsedJsonData.interval &&
-                              { timeframe: parsedJsonData.interval }
-                            ),
-                            ...(
-                              parsedJsonData.exchange &&
-                              { exchange: parsedJsonData.exchange }
-                            ),
-                            ...(
-                              parsedJsonData.description &&
-                              { description: parsedJsonData.description }
-                            ),
-                            ...(
-                              parsedJsonData.date_from &&
-                              { date_from: parsedJsonData.date_from }
-                            ),
-                            ...(
-                              parsedJsonData.date_to &&
-                              { date_to: parsedJsonData.date_to }
-                            ),
+                          systemMessageCreated = true;
+                        } else {
+                          // Update existing system message
+                          const lastMessage = draft.messages[draft.messages.length - 1];
+                          if (lastMessage?.role === 'system') {
+                            lastMessage.content = systemMessageContent;
                           }
-                        }));
-                      }
-                    })
-                  );
+                        }
+                      })
+                    );
+                  }
 
-                  // Save message to chat endpoint if we have a system message
-                  if (chatMessages) {
-                    try {
-                      await axios.post(`/user/chats/${chatId}`, {
-                        role: 'system',
-                        messages: chatMessages
-                      });
-                    } catch (error) {
-                      console.error('Error saving message:', error);
-                    }
+                  // Accumulate chart indicators
+                  if (parsedJsonData.action_type === 'plot_indicator' && parsedJsonData.indicators) {
+                    parsedJsonData.indicators.forEach((ind: any) => {
+                      if (!chartUpdates.indicators.some(i => 
+                        i.name === ind.name && i.value === ind.value
+                      )) {
+                        chartUpdates.indicators.push(ind);
+                      }
+                    });
+                  }
+
+                  // Accumulate chart patterns
+                  if (parsedJsonData.action_type === 'plot_chart_pattern' && parsedJsonData.chart_pattern) {
+                    parsedJsonData.chart_pattern.forEach((pattern: any) => {
+                      chartUpdates.chart_pattern.push(pattern);
+                    });
+                  }
+
+                  // Update chart metadata
+                  if (
+                    parsedJsonData.action_type === 'plot_indicator' || 
+                    parsedJsonData.action_type === 'plot_chart_pattern'
+                  ) {
+                    chartUpdates = {
+                      ...chartUpdates,
+                      ...(parsedJsonData.ticker && { symbol: parsedJsonData.ticker }),
+                      ...(parsedJsonData.interval && { timeframe: parsedJsonData.interval }),
+                      ...(parsedJsonData.exchange && { exchange: parsedJsonData.exchange }),
+                      ...(parsedJsonData.description && { description: parsedJsonData.description }),
+                      ...(parsedJsonData.from_date && { date_from: parsedJsonData.from_date }),
+                      ...(parsedJsonData.to_date && { date_to: parsedJsonData.to_date }),
+                    };
                   }
                 } catch (error) {
                   console.error('Error processing SSE event:', error);
@@ -351,6 +290,45 @@ export const chatsApi = createApi({
             reader.releaseLock();
           }
           
+          // After stream completes:
+          // 1. Save all messages
+          const systemMessage: Message = {
+            role: 'system',
+            content: systemMessageContent,
+            timestamp: new Date().toISOString()
+          };
+
+          await axios.post(`/user/chats/${chatId}`, {
+            messages: [userMessage, systemMessage]
+          });
+
+          // 2. Handle chart update/create if we have any chart data
+          if (chartUpdates.indicators.length > 0 || chartUpdates.chart_pattern.length > 0) {
+            const chartData: ChartData = {
+              id: chartId,
+              type: 'line',
+              title: chartUpdates.description || '',
+              symbol: chartUpdates.symbol || '',
+              timeframe: chartUpdates.timeframe || 'daily',
+              exchange: chartUpdates.exchange || '',
+              description: chartUpdates.description || '',
+              data: [],
+              indicators: chartUpdates.indicators,
+              chart_pattern: chartUpdates.chart_pattern,
+              date_from: chartUpdates.date_from,
+              date_to: chartUpdates.date_to,
+            };
+
+            if (chartExistsInitially) {
+              dispatch(chartApi.endpoints.updateChart.initiate({
+                id: chartId,
+                data: chartData
+              }));
+            } else {
+              dispatch(chartApi.endpoints.addChart.initiate(chartData));
+            }
+          }
+
           return { data: null };
         } catch (error) {
           // Revert optimistic update on error

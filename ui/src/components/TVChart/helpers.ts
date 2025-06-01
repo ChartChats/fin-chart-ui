@@ -22,22 +22,19 @@ export async function makeApiRequest(endpoint: string = '', payload: Record<stri
   const baseUrl = `${process.env.BACKEND_SERVER_URL}/api/v1`;
 
   try {
-    console.log(`[API Request]: ${baseUrl}/${endpoint}`, payload);
+    console.log(`[API Request]: ${process.env.BACKEND_SERVER_URL}/${endpoint}`, payload);
     
-    const response = await axios(`${baseUrl}/${endpoint}`, {
+    const response = await axios(`${process.env.BACKEND_SERVER_URL}/${endpoint}`, {
       method: 'POST',
       headers: {
         'Content-Type': 'application/json'
       },
       data: JSON.stringify(payload)
     });
-    
-    if (!response.data.ok) {
-      throw new Error(`API request error: ${response.status}`);
-    }
-    const data = await response.data.json();
-    console.log(`[API Response]: Received ${data?.values?.length || 0} data points`);
-    return data;
+
+    const responseData = await response.data;
+    console.log(`[API Response]: Received ${responseData?.values?.length || 0} data points`);
+    return responseData;
   } catch (error: any) {
     console.error('API request failed:', error);
     throw new Error(`API request error: ${error.message}`);

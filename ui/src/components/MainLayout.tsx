@@ -273,6 +273,7 @@ export function MainLayout() {
                 <Screener />
               </Card>
               <ResizeHandle section="screener" side="right" />
+              <ResizeHandle section="screener" side="left" />
             </div>
           )}
 
@@ -328,6 +329,7 @@ export function MainLayout() {
                 <Chat />
               </Card>
               <ResizeHandle section="chat" side="left" />
+              <ResizeHandle section="chat" side="right" />
             </div>
           )}
         </div>

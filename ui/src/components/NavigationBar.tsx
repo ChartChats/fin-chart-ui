@@ -6,17 +6,17 @@ import { ThemeToggle } from './ThemeToggle';
 import { cn } from '@/lib/utils';
 import ProfileIcon from '@/components/Profile/ProfileIcon';
 
-interface NavigationBarProps {
-  activeSection: 'screener' | 'charts' | 'chat';
-  visibleSections: {
-    screener: boolean;
-    charts: boolean;
-    chat: boolean;
-  };
-  onSectionToggle: (section: 'screener' | 'charts' | 'chat') => void;
-}
+import {
+  NavigationBarProps
+} from '@/interfaces/navigationInterfaces';
 
-export function NavigationBar({ activeSection, visibleSections, onSectionToggle }: NavigationBarProps) {
+export const NavigationBar = (props: NavigationBarProps) => {
+  const {
+    activeSection,
+    visibleSections,
+    onSectionToggle
+  } = props;
+
   const { theme } = useTheme();
   const isDarkTheme = theme === 'dark';
 
@@ -34,57 +34,61 @@ export function NavigationBar({ activeSection, visibleSections, onSectionToggle 
     isVisible: boolean;
     onClick: () => void;
   }) => (
-    <Tooltip title={label} placement="right">
+    <Tooltip title={ label } placement="right">
       <Button
-        type={isVisible ? 'primary' : 'text'}
-        className={cn(
-          'w-full h-8 mb-1 flex items-center justify-center px-2 transition-all',
-          !isVisible && 'opacity-60 hover:opacity-100'
-        )}
-        onClick={onClick}
+        type={ isVisible ? 'primary' : 'text' }
+        className={
+          cn(
+            'w-full h-8 mb-1 flex items-center justify-center px-2 transition-all',
+            !isVisible && 'opacity-60 hover:opacity-100'
+          )
+        }
+        onClick={ onClick }
       >
-        {icon}
+        { icon  }
       </Button>
     </Tooltip>
   );
 
   return (
-    <div 
+    <div
       className="flex flex-col border-r w-12"
-      style={{ 
-        backgroundColor: bgColor,
-        borderColor: borderColor
-      }}
+      style={ { backgroundColor: bgColor, borderColor } }
     >
-      {/* Logo Section */}
-      <div className="p-2 flex justify-center border-b" style={{ borderColor }}>
-        <img src="/logo-small.svg" alt="ChartChat" className="h-6 w-6" />
+      <div
+        className="p-2 flex justify-center border-b"
+        style={ { borderColor } }
+      >
+        <img
+          src="/logo-small.svg"
+          alt="ChartChat"
+          className="h-6 w-6"
+        />
       </div>
-
-      {/* Navigation Items */}
       <div className="flex-1 p-2">
         <NavButton
-          icon={<DesktopOutlined />}
+          icon={ <DesktopOutlined /> }
           label="Screener"
-          isVisible={visibleSections.screener}
-          onClick={() => onSectionToggle('screener')}
+          isVisible={ visibleSections.screener  }
+          onClick={ () => onSectionToggle('screener') }
         />
         <NavButton
-          icon={<LineChartOutlined />}
+          icon={ <LineChartOutlined /> }
           label="Charts"
-          isVisible={visibleSections.charts}
-          onClick={() => onSectionToggle('charts')}
+          isVisible={ visibleSections.charts  }
+          onClick={ () => onSectionToggle('charts') }
         />
         <NavButton
-          icon={<MessageOutlined />}
+          icon={ <MessageOutlined /> }
           label="Chat"
-          isVisible={visibleSections.chat}
-          onClick={() => onSectionToggle('chat')}
+          isVisible={ visibleSections.chat  }
+          onClick={ () => onSectionToggle('chat') }
         />
       </div>
-
-      {/* Bottom Actions */}
-      <div className="p-2 border-t" style={{ borderColor }}>
+      <div
+        className="p-2 border-t"
+        style={ { borderColor } }
+      >
         <div className="mt-2">
           <ProfileIcon />
         </div>

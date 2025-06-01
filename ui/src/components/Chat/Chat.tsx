@@ -9,6 +9,7 @@ import {
   useCreateChatMutation,
   useDeleteChatMutation,
   useGetChatsQuery,
+  useGetChartsQuery,
 } from '@/store/index';
 
 const ACTIVE_CHAT_ID_KEY = 'activeChatId';

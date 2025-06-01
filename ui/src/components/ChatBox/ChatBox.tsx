@@ -2,7 +2,7 @@ import { useState } from "react";
 import { Button, Input, Tooltip, message } from "antd";
 import { PaperClipOutlined, SendOutlined, SearchOutlined, ScanOutlined } from "@ant-design/icons";
 import { useTheme } from "@/contexts/ThemeContext";
-import { useAddMessageMutation, useAddChartMutation } from "@/store";
+import { useAddMessageMutation } from "@/store";
 
 const { TextArea } = Input;
 
@@ -13,7 +13,6 @@ export function ChatBox({ chatId }: { chatId?: string }) {
   const { theme } = useTheme();
   
   const [addMessage, { isLoading: isSendingMessage }] = useAddMessageMutation();
-  const [addChart] = useAddChartMutation();
 
   const isDarkTheme = theme === 'dark';
   const borderColor = isDarkTheme ? '#3f3f46' : '#e5e7eb';

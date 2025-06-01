@@ -1,7 +1,7 @@
 import axios from 'axios';
 import { auth } from '../config/firebase';
 
-const API_URL = process.env.BACKEND_SERVER_URL || process.env.LLM_SERVER_URL;
+const API_URL = process.env.BACKEND_SERVER_URL;
 
 export const apiClient = axios.create({
   baseURL: API_URL,
