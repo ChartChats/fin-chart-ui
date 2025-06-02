@@ -25,7 +25,7 @@ A modern financial charting application built with React, TypeScript, and Tradin
 1. **Clone the repository**
 ```bash
 git clone https://github.com/yourusername/fin-chart-ui.git
-cd fin-chart-ui/ui
+cd fin-chart-ui
 ```
 
 2. **Install dependencies**
