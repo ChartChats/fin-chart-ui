@@ -153,14 +153,14 @@ export default class Datafeed {
       let storedBars = dataCache.get(cacheKey) || [];
       const cacheFirst = storedBars[0]?.time;
       const cacheLast = storedBars[storedBars.length - 1]?.time;
-  
+
       // Determine required fetch direction
       const needsOlderData = firstDataRequest || (cacheFirst && fromMs < cacheFirst);
       const needsNewerData = firstDataRequest || (cacheLast && toMs > cacheLast);
-  
+
       if (needsOlderData || needsNewerData) {
         console.log(`[getBars]: Fetching data for ${exchange}:${symbol}`);
-  
+
         let startDate: Date, endDate: Date;
         if (needsOlderData) {
           endDate = cacheFirst ? new Date(cacheFirst) : new Date(toMs);
@@ -177,7 +177,7 @@ export default class Datafeed {
             'W': { unit: 'weeks', value: BARS_LIMIT },
             'M': { unit: 'months', value: BARS_LIMIT }
           };
-  
+
           const { unit, value } = timeUnitMap[resolution] || { unit: 'days', value: BARS_LIMIT };
           startDate = moment(endDate).subtract(value, unit).toDate();
         } else {

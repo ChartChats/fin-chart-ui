@@ -83,8 +83,13 @@ export const TVChartContainer: React.FC<TVChartProps> = (props: DefaultChartProp
     const chart = tvWidget.chart();
     
     // Ensure timestamps are in seconds
-    const fromTime = props.date_from ? normalizeTimestamp(parseInt(props.date_from)) : moment().subtract(30, 'days').unix();
-    const toTime = props.date_to ? normalizeTimestamp(parseInt(props.date_to)) : moment().unix();
+    const fromTime = props.date_from
+      ? moment(props.date_from, 'YYYY-MM-DD').unix()
+      : moment().subtract(30, 'days').unix();
+
+    const toTime = props.date_to
+      ? moment(props.date_to, 'YYYY-MM-DD').unix()
+      : moment().unix();
     
     console.log(`[updateVisibleRange]: Setting range from ${fromTime} to ${toTime}`);
     
@@ -162,7 +167,8 @@ export const TVChartContainer: React.FC<TVChartProps> = (props: DefaultChartProp
               linecolor: colorMap[pattern.color] || pattern.color,
               color: colorMap[pattern.color] || pattern.color,
               linestyle: pattern.dotted ? 1 : 0,
-              linewidth: patternShape === 'Horizontal_Line'? 0.5 : 2,
+              linewidth: patternShape === 'Horizontal_Line'? 0.5 : pattern.dotted ? 5 : 10,
+              size: 50
             }
           };
           // for the text to show

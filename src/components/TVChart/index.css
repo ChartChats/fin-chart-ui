@@ -117,3 +117,46 @@
 .resizing .chart-controls {
   opacity: 0.5;
 }
+
+/* for the screener */
+.dark-theme-table .ant-table {
+  background-color: #1f2937 !important;
+  color: #ffffff !important;
+}
+
+.dark-theme-table .ant-table-thead > tr > th {
+  background-color: #374151 !important;
+  color: #ffffff !important;
+  border-bottom: 1px solid #4b5563 !important;
+}
+
+.dark-theme-table .ant-table-tbody > tr > td {
+  background-color: #1f2937 !important;
+  border-bottom: 1px solid #374151 !important;
+}
+
+.dark-theme-table .ant-table-tbody > tr:hover > td {
+  background-color: #374151 !important;
+}
+
+.dark-theme-table .ant-pagination {
+  color: #ffffff !important;
+}
+
+.dark-theme-table .ant-pagination .ant-pagination-item {
+  background-color: #374151 !important;
+  border-color: #4b5563 !important;
+}
+
+.dark-theme-table .ant-pagination .ant-pagination-item a {
+  color: #ffffff !important;
+}
+
+.dark-theme-table .ant-pagination .ant-pagination-item-active {
+  background-color: #1890ff !important;
+  border-color: #1890ff !important;
+}
+
+.dark-theme-table .ant-pagination .ant-pagination-item-active a {
+  color: #ffffff !important;
+}
