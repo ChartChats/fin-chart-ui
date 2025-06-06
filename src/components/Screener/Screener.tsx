@@ -2,8 +2,6 @@ import React, { useState, useMemo, useEffect } from 'react';
 import _ from 'lodash';
 import { useTheme } from "@/contexts/ThemeContext";
 
-import mockData from '@/mock/screener/screener1.json';
-
 import {
   Table,
   Card,
@@ -14,8 +12,14 @@ import {
   Typography,
   Tooltip,
   Spin,
-  Collapse
+  Collapse,
+  Empty
 } from 'antd';
+
+import {
+  useGetScreenersQuery,
+  useGetScreenerQuery
+} from '@/store/apis/screenerApis';
 
 import {
   SettingOutlined,
@@ -36,26 +40,15 @@ const Screener = () => {
   const { theme } = useTheme();
   const isDarkTheme = theme === 'dark';
 
-  const screenerData = [
-    {
-      query: "Find stocks with P/E ratio < 15 and RSI < 30 and market cap > 1B",
-      dataArrivalTime: new Date(Date.now() - 5 * 60 * 1000),
-      isLoading: false,
-      hasError: false
-    },
-    {
-      query: "Find stocks with dividend yield > 5% and beta < 1",
-      dataArrivalTime: new Date(Date.now() - 10 * 60 * 1000),
-      isLoading: false,
-      hasError: false
-    },
-    {
-      query: "Find stocks with dividend yield > 5% and beta < 1",
-      dataArrivalTime: new Date(Date.now() - 10 * 60 * 1000),
-      isLoading: false,
-      hasError: false
-    }
-  ];
+  const { data: screeners, isLoading: isLoadingScreeners } = useGetScreenersQuery();
+  const [selectedScreenerId, setSelectedScreenerId] = useState<string | null>(null);
+  
+  const { 
+    data: selectedScreenerData,
+    isLoading: isLoadingScreenerData 
+  } = useGetScreenerQuery(selectedScreenerId ?? '', {
+    skip: !selectedScreenerId
+  });
 
   const [loading, setLoading] = useState(false);
   const [currentTime, setCurrentTime] = useState(new Date());
@@ -71,7 +64,8 @@ const Screener = () => {
   }, []);
 
   const getTimeDifference = (screener) => {
-    const diffMs = currentTime.getTime() - screener.dataArrivalTime.getTime();
+    const updatedAtDate = new Date(screener.updatedAt);
+    const diffMs = currentTime.getTime() - updatedAtDate.getTime();
     const diffMinutes = Math.floor(diffMs / (1000 * 60));
     if (diffMinutes < 1) return "just now";
     if (diffMinutes === 1) return "1 minute ago";
@@ -81,7 +75,8 @@ const Screener = () => {
   };
 
   const processedData = useMemo(() => {
-    return mockData.map((item, index) => {
+    if (!selectedScreenerData?.records) return [];
+    return selectedScreenerData.records.map((item, index) => {
       const changePercent = item.open !== 0 ? ((item.close - item.open) / item.open) * 100 : 0;
       const prevClose = item.open;
       return {
@@ -91,7 +86,7 @@ const Screener = () => {
         prev_close: prevClose
       };
     });
-  }, []);
+  }, [selectedScreenerData]);
 
   const handleRetry = () => {
     setLoading(true);
@@ -207,106 +202,130 @@ const Screener = () => {
       
       <div className="flex-1 overflow-y-auto px-4 pb-4" style={{ minHeight: 0 }}>
         <div className="space-y-4 py-4">
-          {_.map(screenerData, (screener, index) => (
-            <Card
-              key={index}
-              style={{
-                backgroundColor: isDarkTheme ? '#1f2937' : '#ffffff',
-                borderColor: isDarkTheme ? '#374151' : '#e5e7eb',
-              }}
-              bodyStyle={{ padding: '16px' }}
-            >
-              <Collapse
-                ghost
-                expandIconPosition="left"
-                style={{ margin: 0 }}
-              >
-                <Panel header={screener.query} key="1">
-                  <div className="flex flex-col space-y-4">
-                    <div className="flex items-center">
-                      <Text
-                        style={{
-                          color: isDarkTheme ? '#9ca3af' : '#6b7280',
-                          fontSize: '12px'
-                        }}
-                      >
-                        Data updated {getTimeDifference(screener)}
-                      </Text>
-                      <Tag
-                        color="blue"
-                        style={{
-                          marginLeft: '12px',
-                          fontSize: '11px'
-                        }}
-                      >
-                        {processedData.length} results
-                      </Tag>
-                      <Tooltip title="Retry">
-                        <Button
-                          type="text"
-                          size="small"
-                          icon={<ReloadOutlined spin={loading} />}
-                          onClick={(e) => {
-                            e.stopPropagation();
-                            handleRetry();
-                          }}
-                          style={{
-                            marginLeft: '12px',
-                            color: isDarkTheme ? '#9ca3af' : '#6b7280',
-                            width: '24px',
-                            height: '24px'
-                          }}
-                        />
-                      </Tooltip>
+          {
+            isLoadingScreeners
+              ? (
+                  <div className="flex justify-center p-8">
+                    <Spin size="large" tip="Loading screeners..." />
+                  </div>
+                )
+              : !screeners?.length
+                ? (
+                    <div className="flex-col justify-center p-8">
+                      <Empty description="No screeners found" />
                     </div>
-
-                    <div className="flex justify-between items-center">
-                      <h3
-                        className="text-lg font-medium mb-0"
-                        style={{ color: isDarkTheme ? '#ffffff' : '#000000' }}
+                  )
+                : (
+                    _.map(screeners, (screener) => (
+                      <Card
+                        key={screener.id}
+                        style={{
+                          backgroundColor: isDarkTheme ? '#1f2937' : '#ffffff',
+                          borderColor: isDarkTheme ? '#374151' : '#e5e7eb',
+                        }}
+                        bodyStyle={{ padding: '16px' }}
                       >
-                        Stock Screener Results
-                      </h3>
-                      <Dropdown
-                        menu={fieldConfigMenu}
-                        trigger={['click']}
-                        placement="bottomRight"
-                      >
-                        <Button
-                          icon={<SettingOutlined />}
-                          style={{
-                            backgroundColor: isDarkTheme ? '#374151' : '#f5f5f5',
-                            borderColor: isDarkTheme ? '#4b5563' : '#d9d9d9',
-                            color: isDarkTheme ? '#ffffff' : '#000000'
+                        <Collapse
+                          ghost
+                          expandIconPosition="left"
+                          style={{ margin: 0 }}
+                          onChange={(keys) => {
+                            if (keys.includes(screener.id)) {
+                              setSelectedScreenerId(screener.id);
+                            } else {
+                              setSelectedScreenerId(null);
+                            }
                           }}
                         >
-                          Configure Fields
-                        </Button>
-                      </Dropdown>
-                    </div>
+                          <Panel header={screener.query} key={screener.id}>
+                            <div className="flex flex-col space-y-4">
+                              <div className="flex items-center">
+                                <Text
+                                  style={{
+                                    color: isDarkTheme ? '#9ca3af' : '#6b7280',
+                                    fontSize: '12px'
+                                  }}
+                                >
+                                  Data updated {getTimeDifference(screener)}
+                                </Text>
+                                <Tag
+                                  color="blue"
+                                  style={{
+                                    marginLeft: '12px',
+                                    fontSize: '11px'
+                                  }}
+                                >
+                                  {processedData.length} results
+                                </Tag>
+                                <Tooltip title="Retry">
+                                  <Button
+                                    type="text"
+                                    size="small"
+                                    icon={<ReloadOutlined spin={loading} />}
+                                    onClick={(e) => {
+                                      e.stopPropagation();
+                                      handleRetry();
+                                    }}
+                                    style={{
+                                      marginLeft: '12px',
+                                      color: isDarkTheme ? '#9ca3af' : '#6b7280',
+                                      width: '24px',
+                                      height: '24px'
+                                    }}
+                                  />
+                                </Tooltip>
+                              </div>
 
-                    <Spin spinning={loading} tip="Refreshing...">
-                      <Table
-                        columns={columns}
-                        dataSource={processedData}
-                        scroll={{ x: 1200 }}
-                        pagination={{
-                          pageSize: 10,
-                          showSizeChanger: true,
-                          pageSizeOptions: ['10', '20', '50'],
-                          showQuickJumper: true,
-                          showTotal: (total, range) => `${range[0]}-${range[1]} of ${total} items`
-                        }}
-                        size="small"
-                        style={{ backgroundColor: isDarkTheme ? '#1f2937' : '#ffffff' }}
-                        className={isDarkTheme ? 'dark-theme-table' : ''}
-                      />
-                    </Spin>
-                  </div>
-                </Panel>
-              </Collapse>
-            </Card>
-          ))}
+                              <div className="flex justify-between items-center">
+                                <h3
+                                  className="text-lg font-medium mb-0"
+                                  style={{ color: isDarkTheme ? '#ffffff' : '#000000' }}
+                                >
+                                  Stock Screener Results
+                                </h3>
+                                <Dropdown
+                                  menu={fieldConfigMenu}
+                                  trigger={['click']}
+                                  placement="bottomRight"
+                                >
+                                  <Button
+                                    icon={<SettingOutlined />}
+                                    style={{
+                                      backgroundColor: isDarkTheme ? '#374151' : '#f5f5f5',
+                                      borderColor: isDarkTheme ? '#4b5563' : '#d9d9d9',
+                                      color: isDarkTheme ? '#ffffff' : '#000000'
+                                    }}
+                                  >
+                                    Configure Fields
+                                  </Button>
+                                </Dropdown>
+                              </div>
+
+                              <Spin spinning={loading} tip="Refreshing...">
+                                <Table
+                                  columns={columns}
+                                  dataSource={processedData}
+                                  scroll={{ x: 1200 }}
+                                  pagination={{
+                                    pageSize: 10,
+                                    showSizeChanger: true,
+                                    pageSizeOptions: ['10', '20', '50'],
+                                    showQuickJumper: true,
+                                    showTotal: (total, range) => `${range[0]}-${range[1]} of ${total} items`
+                                  }}
+                                  size="small"
+                                  style={{ backgroundColor: isDarkTheme ? '#1f2937' : '#ffffff' }}
+                                  className={isDarkTheme ? 'dark-theme-table' : ''}
+                                />
+                              </Spin>
+                            </div>
+                          </Panel>
+                        </Collapse>
+                      </Card>
+                    )
+                  )
+                )
+          }
         </div>
       </div>
     </div>

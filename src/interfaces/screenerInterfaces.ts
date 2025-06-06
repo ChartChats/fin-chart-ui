@@ -5,3 +5,11 @@ export interface ScreenerField {
   title: string;
   type: FieldType;
 }
+
+export interface ScreenerData {
+  query: string;
+  records: any[];
+  createdAt: string;
+  updatedAt: string;
+  id?: string;
+}

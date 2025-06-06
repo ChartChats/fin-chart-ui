@@ -18,7 +18,11 @@ import {
 
 import {
   chartApi
-} from "./chartApis";
+} from "@/store/apis/chartApis";
+
+import {
+  screenerApi
+} from "@/store/apis/screenerApis";
 
 import {
   Message,
@@ -28,6 +32,10 @@ import {
 import {
   ChartData
 } from "@/interfaces/chartInterfaces";
+
+import {
+  ScreenerData
+} from "@/interfaces/screenerInterfaces";
 
 export const chatsApi = createApi({
   reducerPath: 'chat',
@@ -135,13 +143,11 @@ export const chatsApi = createApi({
         // Initialize accumulators
         let systemMessageContent = '';
         let systemMessageCreated = false;
-        let chartUpdates: Partial<ChartData> & {
-          indicators: any[];
-          chart_pattern: any[];
-        } = {
+        let chartUpdates: Partial<ChartData> = {
           indicators: [],
           chart_pattern: [],
         };
+        let screenerUpdates: Partial<ScreenerData> = {};
         let chartExistsInitially = false;
         const chartId = chatId; // Use chatId as chartId
 
@@ -274,6 +280,18 @@ export const chatsApi = createApi({
                       ...(parsedJsonData.to_date && { date_to: parsedJsonData.to_date }),
                     };
                   }
+
+
+                  // Handle Screener response (create new screener always)
+                  if (parsedJsonData.action_type === 'screen_stock' && parsedJsonData.records) {
+                    screenerUpdates = {
+                      id: uuidv4(),
+                      query: message,
+                      records: parsedJsonData.records,
+                      updatedAt: new Date().toISOString(),
+                      createdAt: new Date().toISOString(),
+                    };
+                  }
                 } catch (error) {
                   console.error('Error processing SSE event:', error);
                 }
@@ -327,6 +345,11 @@ export const chatsApi = createApi({
             } else {
               dispatch(chartApi.endpoints.addChart.initiate(chartData));
             }
+          }
+
+          // 3. Handle create screener if we have any screener data
+          if (!_.isEmpty(screenerUpdates)) {
+            dispatch(screenerApi.endpoints.addScreener.initiate(screenerUpdates));
           }
 
           return { data: null };
