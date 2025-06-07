@@ -1,11 +1,10 @@
 import _ from 'lodash';
-import moment from 'moment';
 import axios from '@/store/client';
 import { v4 as uuidv4 } from 'uuid';
+import moment from 'moment';
 
 import {
   createApi,
-  fetchBaseQuery,
 } from "@reduxjs/toolkit/query/react";
 
 import {
@@ -18,7 +17,11 @@ import {
 
 import {
   chartApi
-} from "./chartApis";
+} from "@/store/apis/chartApis";
+
+import {
+  screenerApi
+} from "@/store/apis/screenerApis";
 
 import {
   Message,
@@ -28,6 +31,10 @@ import {
 import {
   ChartData
 } from "@/interfaces/chartInterfaces";
+
+import {
+  ScreenerData
+} from "@/interfaces/screenerInterfaces";
 
 export const chatsApi = createApi({
   reducerPath: 'chat',
@@ -124,39 +131,63 @@ export const chatsApi = createApi({
           role: 'user',
           timestamp: new Date().toISOString()
         };
-    
+
+        // Add initial system message with analyzing state
+        const analyzingMessage: Message = {
+          content: '',
+          role: 'system',
+          timestamp: new Date().toISOString(),
+          isAnalyzing: true
+        };
         const patchResult = dispatch(
-          chatsApi.util.updateQueryData('getChat', chatId, (draft) => {
-            draft.messages = draft.messages || [];
-            draft.messages.push(userMessage);
+            chatsApi.util.updateQueryData('getChat', chatId, (draft) => {
+              draft.messages = draft.messages || [];
+              draft.messages.push(userMessage);
+              draft.messages.push(analyzingMessage);
           })
         );
 
         // Initialize accumulators
         let systemMessageContent = '';
         let systemMessageCreated = false;
-        let chartUpdates: Partial<ChartData> & {
-          indicators: any[];
-          chart_pattern: any[];
-        } = {
+        let chartUpdates: Partial<ChartData> = {
           indicators: [],
           chart_pattern: [],
         };
+        let screenerUpdates: Partial<ScreenerData> = {};
         let chartExistsInitially = false;
         const chartId = chatId; // Use chatId as chartId
 
         // Check if chart exists
+        let chartResponse = { data: null };
         try {
-          const chartResponse = await axios(`/user/charts/${chartId}`);
-          if (chartResponse.data && chartResponse.data.indicators) {
-            chartUpdates.indicators = [...chartResponse.data.indicators];
-            chartUpdates.chart_pattern = [...(chartResponse.data.chart_pattern || [])];
+          chartResponse = await axios(`/user/charts/${chartId}`);
+          if (chartResponse.data) {
+            const chartData = chartResponse.data[chartId];
+            chartUpdates.indicators = [...(chartData.indicators || [])];
+            chartUpdates.chart_pattern = [...(chartData.chart_pattern || [])];
             chartExistsInitially = true;
           }
         } catch (error) {
           console.log('Chart not found, will create new if needed');
         }
 
+
+        // if chart exists initally then we will tweak the message given to LLM
+        // We need to let LLM know maybe the chart is talking about the specific ticker
+        let llmMessage = message;
+        if (chartExistsInitially) {
+          const {
+            symbol = '',
+            exchange = '',
+            description = '',
+            date_from = '',
+            date_to = ''
+          } = chartResponse.data[chartId];
+          llmMessage = `The ticker for which the below message is being asked is maybe for
+            the ticker: ${symbol} on exchange: ${exchange}, having description: ${description},
+            from date: ${moment.unix(date_from)} to date: ${moment.unix(date_to)}. The message is: ${llmMessage}`;
+        }
         const SSE_ENDPOINT = `${process.env.BACKEND_SERVER_URL}/llm/response`;
     
         try {
@@ -168,7 +199,7 @@ export const chatsApi = createApi({
               'Authorization': localStorage.getItem('token') || '',
             },
             body: JSON.stringify({
-              "prompt": message,
+              "prompt": llmMessage,
               "thread_id": chatId
             }),
             signal: controller.signal,
@@ -222,21 +253,21 @@ export const chatsApi = createApi({
                     
                     dispatch(
                       chatsApi.util.updateQueryData('getChat', chatId, (draft) => {
-                        if (!systemMessageCreated) {
-                          // Create system message if it doesn't exist
+                        const lastMessage = draft.messages[draft.messages.length - 1];
+                        if (lastMessage?.role === 'system') {
+                          // Update the analyzing message with actual content
+                          lastMessage.content = systemMessageContent;
+                          lastMessage.isAnalyzing = false;
+                        } else {
+                          // Create a new system message if needed
                           draft.messages.push({
                             role: 'system',
                             content: systemMessageContent,
-                            timestamp: new Date().toISOString()
+                            timestamp: new Date().toISOString(),
+                            isAnalyzing: false
                           });
-                          systemMessageCreated = true;
-                        } else {
-                          // Update existing system message
-                          const lastMessage = draft.messages[draft.messages.length - 1];
-                          if (lastMessage?.role === 'system') {
-                            lastMessage.content = systemMessageContent;
-                          }
                         }
+                        systemMessageCreated = true;
                       })
                     );
                   }
@@ -272,6 +303,17 @@ export const chatsApi = createApi({
                       ...(parsedJsonData.description && { description: parsedJsonData.description }),
                       ...(parsedJsonData.from_date && { date_from: parsedJsonData.from_date }),
                       ...(parsedJsonData.to_date && { date_to: parsedJsonData.to_date }),
+                    };
+                  }
+
+
+                  // Handle Screener response (create new screener always)
+                  if (parsedJsonData.action_type === 'screen_stock' && parsedJsonData.records) {
+                    screenerUpdates = {
+                      query: message,
+                      records: parsedJsonData.records,
+                      updatedAt: new Date().toISOString(),
+                      createdAt: new Date().toISOString(),
                     };
                   }
                 } catch (error) {
@@ -326,7 +368,20 @@ export const chatsApi = createApi({
               }));
             } else {
               dispatch(chartApi.endpoints.addChart.initiate(chartData));
+              // Dispatch event for new chart
+              window.dispatchEvent(new CustomEvent('newChartGenerated', { 
+                detail: { chartId: chartId } 
+              }));
             }
+          }
+
+          // 3. Handle create screener if we have any screener data
+          if (!_.isEmpty(screenerUpdates)) {
+            const result = await dispatch(screenerApi.endpoints.addScreener.initiate(screenerUpdates)).unwrap();
+            // Dispatch event for new screener
+            window.dispatchEvent(new CustomEvent('newScreenerGenerated', { 
+              detail: { screenerId: result.id } 
+            }));
           }
 
           return { data: null };

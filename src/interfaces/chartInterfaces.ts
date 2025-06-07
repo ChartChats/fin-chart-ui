@@ -13,6 +13,7 @@ export interface ChartPatternProps {
   dotted: boolean;
   width: number;
   direction: string;
+  label: string;
 }
 
 export interface TVChartProps {

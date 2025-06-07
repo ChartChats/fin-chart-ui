@@ -1,12 +1,11 @@
 import React, { useState, useRef, useCallback, useEffect, useMemo } from "react";
 import { Card } from "antd";
 import { useTheme } from "@/contexts/ThemeContext";
-import { Screener } from "./Screener/Screener";
+import Screener from "./Screener/Screener";
 import { ChartSystem } from "./ChartSystem/ChartSystem";
 import Chat from "./Chat/Chat";
 import { useIsMobile } from "@/hooks/use-mobile";
 import { NavigationBar } from "./NavigationBar";
-import { cn } from "@/lib/utils";
 
 interface ResizeState {
   isResizing: boolean;
@@ -27,17 +26,24 @@ export function MainLayout() {
   const isMobile = useIsMobile();
   const isDarkTheme = theme === 'dark';
   
-  const [visibleSections, setVisibleSections] = useState({
-    screener: false,
-    charts: true,
-    chat: true
+  const [visibleSections, setVisibleSections] = useState(() => {
+    const stored = localStorage.getItem('visibleSections');
+    return stored ? JSON.parse(stored) : {
+      screener: false,
+      charts: true,
+      chat: true
+    };
   });
 
   const handleSectionToggle = (section: 'screener' | 'charts' | 'chat') => {
-    setVisibleSections(prev => ({
-      ...prev,
-      [section]: !prev[section]
-    }));
+    setVisibleSections(prev => {
+      const newState = {
+        ...prev,
+        [section]: !prev[section]
+      };
+      localStorage.setItem('visibleSections', JSON.stringify(newState));
+      return newState;
+    });
   };
 
   const activeSection = useMemo(() => {
@@ -54,52 +60,32 @@ export function MainLayout() {
   
   // Calculate base widths based on proportions
   const calculateBaseWidths = useCallback((containerWidth: number) => {
-    const totalParts = 10; // Total parts for distribution (20% + 40% + 30% = 90%)
     const minWidth = 200;
 
-    if (!visibleSections.screener && !visibleSections.charts && visibleSections.chat) {
+    // Single section visible - take full width
+    if (Object.values(visibleSections).filter(Boolean).length === 1) {
       return {
-        screener: 0,
-        charts: 0,
-        chat: containerWidth
+        screener: visibleSections.screener ? containerWidth : 0,
+        charts: visibleSections.charts ? containerWidth : 0,
+        chat: visibleSections.chat ? containerWidth : 0
       };
     }
 
-    if (!visibleSections.screener && !visibleSections.charts && !visibleSections.chat) {
+    // Two sections visible - split evenly
+    if (Object.values(visibleSections).filter(Boolean).length === 2) {
+      const splitWidth = containerWidth / 2;
       return {
-        screener: 0,
-        charts: containerWidth,
-        chat: 0
+        screener: visibleSections.screener ? Math.max(splitWidth, minWidth) : 0,
+        charts: visibleSections.charts ? Math.max(splitWidth, minWidth) : 0,
+        chat: visibleSections.chat ? Math.max(splitWidth, minWidth) : 0
       };
     }
 
-    if (!visibleSections.screener && visibleSections.charts && visibleSections.chat) {
-      // Charts 40%, Chat 30% -> Charts should take 57%, Chat 43% of available space
-      const chartsRatio = 0.57;
-      const chatRatio = 0.43;
-      return {
-        screener: 0,
-        charts: Math.max(containerWidth * chartsRatio, minWidth),
-        chat: Math.max(containerWidth * chatRatio, minWidth)
-      };
-    }
-
-    if (visibleSections.screener && !visibleSections.charts && visibleSections.chat) {
-      // Screener 20%, Chat 30% -> Screener should take 40%, Chat 60% of available space
-      const screenerRatio = 0.4;
-      const chatRatio = 0.6;
-      return {
-        screener: Math.max(containerWidth * screenerRatio, minWidth),
-        charts: 0,
-        chat: Math.max(containerWidth * chatRatio, minWidth)
-      };
-    }
-
-    // Default case: all sections visible or other combinations
+    // All three sections visible - initial proportional split
     return {
-      screener: Math.max(containerWidth * 0.2, minWidth),
-      charts: Math.max(containerWidth * 0.4, minWidth),
-      chat: Math.max(containerWidth * 0.3, minWidth)
+      screener: visibleSections.screener ? Math.max(containerWidth * 0.33, minWidth) : 0,
+      charts: visibleSections.charts ? Math.max(containerWidth * 0.34, minWidth) : 0,
+      chat: visibleSections.chat ? Math.max(containerWidth * 0.33, minWidth) : 0
     };
   }, [visibleSections]);
 
@@ -160,48 +146,68 @@ export function MainLayout() {
 
     const containerWidth = containerRef.current.offsetWidth;
     const delta = e.clientX - resizeState.initialX;
-    const minWidth = 200;
-    const maxWidth = Math.min(containerWidth * 0.6, containerWidth - minWidth * 2);
-
+    const minWidth = 200; // Minimum practical width
+    
     const { section, side } = resizeState.activeHandle;
     const deltaMultiplier = side === 'right' ? 1 : -1;
     const adjustedDelta = delta * deltaMultiplier;
 
     document.body.classList.add('resizing');
 
+    // Get array of visible sections in order
+    const visibleSectionsList = ['screener', 'charts', 'chat'].filter(
+      s => visibleSections[s as keyof typeof visibleSections]
+    );
+
     switch (section) {
       case 'screener': {
-        const newWidth = Math.min(Math.max(resizeState.initialWidths.screener + adjustedDelta, minWidth), maxWidth);
-        const remainingWidth = containerWidth - newWidth - widthsRef.current.chat;
-        if (remainingWidth >= minWidth) {
+        const newWidth = Math.max(resizeState.initialWidths.screener + adjustedDelta, minWidth);
+        // Calculate remaining space after new width
+        const remainingSpace = containerWidth - newWidth;
+        
+        // If we have enough space for other sections (or only one other section)
+        if (remainingSpace >= (visibleSectionsList.length > 2 ? minWidth * 2 : minWidth)) {
           setScreenerWidthWithRef(newWidth);
+          // If only two sections are visible, adjust the other section accordingly
+          if (visibleSectionsList.length === 2) {
+            if (visibleSections.chat) {
+              setChatWidthWithRef(remainingSpace);
+            }
+          }
         }
         break;
       }
       case 'charts': {
         if (side === 'left') {
-          const newScreenerWidth = Math.min(Math.max(resizeState.initialWidths.screener + adjustedDelta, minWidth), maxWidth);
-          if (containerWidth - newScreenerWidth - widthsRef.current.chat >= minWidth) {
+          const newScreenerWidth = Math.max(resizeState.initialWidths.screener + adjustedDelta, minWidth);
+          if (containerWidth - newScreenerWidth >= minWidth) {
             setScreenerWidthWithRef(newScreenerWidth);
           }
         } else {
-          const newChatWidth = Math.min(Math.max(resizeState.initialWidths.chat - adjustedDelta, minWidth), maxWidth);
-          if (containerWidth - widthsRef.current.screener - newChatWidth >= minWidth) {
+          const newChatWidth = Math.max(resizeState.initialWidths.chat - adjustedDelta, minWidth);
+          if (containerWidth - newChatWidth - widthsRef.current.screener >= minWidth) {
             setChatWidthWithRef(newChatWidth);
           }
         }
         break;
       }
       case 'chat': {
-        const newWidth = Math.min(Math.max(resizeState.initialWidths.chat + adjustedDelta, minWidth), maxWidth);
-        const remainingWidth = containerWidth - widthsRef.current.screener - newWidth;
-        if (remainingWidth >= minWidth) {
+        const newWidth = Math.max(resizeState.initialWidths.chat + adjustedDelta, minWidth);
+        const remainingSpace = containerWidth - newWidth;
+
+        if (remainingSpace >= (visibleSectionsList.length > 2 ? minWidth * 2 : minWidth)) {
           setChatWidthWithRef(newWidth);
+          // If only two sections are visible, adjust the other section accordingly
+          if (visibleSectionsList.length === 2) {
+            if (visibleSections.screener) {
+              setScreenerWidthWithRef(remainingSpace);
+            }
+          }
         }
         break;
       }
     }
-  }, [resizeState, setScreenerWidthWithRef, setChatWidthWithRef]); // Remove screenerWidth and chatWidth dependencies
+  }, [resizeState, setScreenerWidthWithRef, setChatWidthWithRef, visibleSections]);
 
   // Update ref when state changes
   useEffect(() => {
@@ -291,6 +297,27 @@ export function MainLayout() {
     }
   }, [visibleSections, calculateBaseWidths]);
 
+  // Listen for section visibility changes
+  useEffect(() => {
+    const handleSectionVisibilityChange = (event: CustomEvent) => {
+      const { screener, charts } = event.detail;
+      setVisibleSections(prev => {
+        const newState = {
+          ...prev,
+          ...(screener !== undefined && { screener }),
+          ...(charts !== undefined && { charts })
+        };
+        localStorage.setItem('visibleSections', JSON.stringify(newState));
+        return newState;
+      });
+    };
+
+    window.addEventListener('sectionVisibilityChanged', handleSectionVisibilityChange as EventListener);
+    return () => {
+      window.removeEventListener('sectionVisibilityChanged', handleSectionVisibilityChange as EventListener);
+    };
+  }, []);
+
   if (isMobile) {
     return (
       <div className="flex flex-col h-full gap-2 p-2">
@@ -319,7 +346,7 @@ export function MainLayout() {
           {visibleSections.screener && (
             <div 
               ref={screenerRef}
-              className="relative h-full"
+              className="relative h-full flex-shrink-0"
               style={{ width: screenerWidth }}
             >
               <Card
@@ -346,8 +373,11 @@ export function MainLayout() {
           {visibleSections.charts && (
             <div 
               ref={chartsRef}
-              className="relative h-full flex-1 min-w-[200px]"
-              style={{ width: chartsWidth }}
+              className="relative h-full flex-shrink-0"
+              style={{ 
+                width: chartsWidth,
+                minWidth: visibleSections.screener && !visibleSections.chat ? '200px' : undefined
+              }}
             >
               <Card
                 className="h-full shadow-sm"
@@ -373,7 +403,7 @@ export function MainLayout() {
           {visibleSections.chat && (
             <div 
               ref={chatRef}
-              className="relative h-full"
+              className="relative h-full flex-shrink-0"
               style={{ width: chatWidth }}
             >
               <Card

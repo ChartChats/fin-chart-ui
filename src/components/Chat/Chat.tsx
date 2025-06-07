@@ -51,8 +51,26 @@ const Chat = (props: ChatWidgetProps) => {
   const switchChat = (id: string) => {
     setActiveChatId(id);
     localStorage.setItem(ACTIVE_CHAT_ID_KEY, id);
+    // Dispatch event to sync with chart
+    window.dispatchEvent(new CustomEvent('chatSelected', { 
+      detail: { chatId: id } 
+    }));
   };
 
+  // Listen for chart selection
+  useEffect(() => {
+    const handleChartSelected = (event: CustomEvent) => {
+      const { chartId } = event.detail;
+      if (chartId && chatsData.some((chat: ChatProps) => chat.id === chartId)) {
+        switchChat(chartId);
+      }
+    };
+
+    window.addEventListener('chartSelected', handleChartSelected as EventListener);
+    return () => {
+      window.removeEventListener('chartSelected', handleChartSelected as EventListener);
+    };
+  }, [chatsData]);
 
   // Effect to initialize chat when chats data is loaded
   useEffect(() => {
