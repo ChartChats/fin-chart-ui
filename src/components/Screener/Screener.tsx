@@ -1,16 +1,11 @@
 import React, { useState, useMemo, useEffect } from 'react';
 import _ from 'lodash';
 import { useTheme } from "@/contexts/ThemeContext";
+import ScreenerCard from "@/components/Screener/ScreenerCard";
 
 import {
-  Table,
-  Card,
-  Button,
-  Dropdown,
   Checkbox,
-  Tag,
   Typography,
-  Tooltip,
   Spin,
   Collapse,
   Empty,
@@ -19,16 +14,12 @@ import {
 
 import {
   useGetScreenersQuery,
-  useGetScreenerQuery,
   useRemoveScreenerMutation
 } from '@/store/apis/screenerApis';
 
 import {
-  SettingOutlined,
   RiseOutlined,
   FallOutlined,
-  ReloadOutlined,
-  DeleteOutlined
 } from '@ant-design/icons';
 
 import {
@@ -120,14 +111,7 @@ const Screener = () => {
     };
   }, []);
   
-  const { 
-    data: selectedScreenerData,
-    isLoading: isLoadingScreenerData 
-  } = useGetScreenerQuery(selectedScreenerId ?? '', {
-    skip: !selectedScreenerId
-  });
-
-  const [loading, setLoading] = useState(false);
+  const [loadingStates, setLoadingStates] = useState<Record<string, boolean>>({});
   const [currentTime, setCurrentTime] = useState(new Date());
   const [selectedCustomFields, setSelectedCustomFields] = useState([
     'volume', 'trailing_pe', 'rsi', 'beta'
@@ -153,24 +137,10 @@ const Screener = () => {
     return diffHours === 1 ? "1 hour ago" : `${diffHours} hours ago`;
   };
 
-  const processedData = useMemo(() => {
-    if (!selectedScreenerData?.records) return [];
-    return selectedScreenerData.records.map((item, index) => {
-      const changePercent = item.open !== 0 ? ((item.close - item.open) / item.open) * 100 : 0;
-      const prevClose = item.open;
-      return {
-        ...item,
-        key: index,
-        price_change_1d_percent: changePercent,
-        prev_close: prevClose
-      };
-    });
-  }, [selectedScreenerData]);
-
-  const handleRetry = () => {
-    setLoading(true);
+  const handleRetry = (screenerId: string) => {
+    setLoadingStates(prev => ({ ...prev, [screenerId]: true }));
     setTimeout(() => {
-      setLoading(false);
+      setLoadingStates(prev => ({ ...prev, [screenerId]: false }));
     }, 2000);
   };
 
@@ -296,155 +266,44 @@ const Screener = () => {
                   )
                 : (
                     _.map(screeners, (screener) => (
-                      <Card
-                        key={ screener.id }
-                        style={ {
-                          backgroundColor: isDarkTheme ? '#1f2937' : '#ffffff',
-                          borderColor: isDarkTheme ? '#374151' : '#e5e7eb',
-                        } }
-                      >
-                        <Collapse
-                          ghost
-                          expandIconPosition="left"
-                          style={ { margin: 0 } }
-                          activeKey={expandedScreeners}
-                          onChange={ (keys: string[]) => {
-                            setExpandedScreeners(keys);
-                            if (keys.includes(screener.id)) {
-                              setSelectedScreenerId(screener.id);
-                              setIsScreenerExpanded(true);
-                            } else if (selectedScreenerId === screener.id) {
+                      <ScreenerCard
+                        key={screener.id}
+                        screener={screener}
+                        isExpanded={expandedScreeners.includes(screener.id)}
+                        isSelected={selectedScreenerId === screener.id}
+                        onToggleExpand={(screenerId, isExpanded) => {
+                          if (isExpanded) {
+                            setExpandedScreeners(prev => [...prev, screenerId]);
+                            setSelectedScreenerId(screenerId);
+                            setIsScreenerExpanded(true);
+                          } else {
+                            setExpandedScreeners(prev => prev.filter(id => id !== screenerId));
+                            if (selectedScreenerId === screenerId) {
                               setSelectedScreenerId(null);
                             }
-                          }}
-                        >
-                          <Panel 
-                            header={
-                              <div className="flex items-center justify-between w-full mr-8">
-                                <div className="flex-col items-center gap-4 flex-grow">
-                                  <div
-                                    style={ {
-                                      color: isDarkTheme ? '#ffffff' : '#000000',
-                                      flex: 1
-                                    } }
-                                  >
-                                    { screener.query  }
-                                  </div>
-                                  <div className="flex justify-between m-2">
-																		<div>
-																			<span
-																				style={ {
-																					color: isDarkTheme ? '#9ca3af' : '#6b7280',
-																					fontSize: '12px',
-																					whiteSpace: 'nowrap'
-																				} }
-																			>
-																				Updated { getTimeDifference(screener) }
-																			</span>
-																			<Tag
-																				color="blue"
-																				style={ {
-																					fontSize: '11px',
-																					marginLeft: '8px'
-																				} }
-																			>
-																				{ processedData.length } results
-																			</Tag>
-																		</div>
-																		<div>
-																			<Tooltip title="Retry">
-																				<Button
-																					type="text"
-																					size="small"
-																					icon={ <ReloadOutlined spin={	loading	} /> }
-																					onClick={	(e) => {
-																						e.stopPropagation();
-																						handleRetry();
-																					}	}
-																					style={	{
-																						color: isDarkTheme ? '#9ca3af' : '#6b7280',
-																						width: '24px',
-																						height: '24px'
-																					}	}
-																				/>
-																			</Tooltip>
-																			<Tooltip title="Delete Screener">
-																				<Button
-																					type="text"
-																				 size="small"
-																					danger
-																					icon={ <DeleteOutlined />	}
-																					onClick={	(e) => {
-																						e.stopPropagation();
-																						Modal.confirm({
-																							title: 'Delete Screener',
-																							content: 'Are you sure you want to delete this screener?',
-																							okText: 'Delete',
-																							cancelText: 'Cancel',
-																							okButtonProps: { danger: true },
-																							onOk: () => {
-																								deleteScreenerMutation(screener.id);
-																							}
-																						});
-																					}	}
-																					style={	{
-																						width: '24px',
-																						height: '24px'
-																					}	}
-																				/>
-																			</Tooltip>
-																		</div>
-																	</div>
-                                </div>
-                              </div>
+                          }
+                        }}
+                        onRetry={handleRetry}
+                        onDelete={(screenerId) => {
+                          Modal.confirm({
+                            title: 'Delete Screener',
+                            content: 'Are you sure you want to delete this screener?',
+                            okText: 'Delete',
+                            cancelText: 'Cancel',
+                            okButtonProps: { danger: true },
+                            onOk: () => {
+                              deleteScreenerMutation(screenerId);
                             }
-                            key={	screener.id	}>
-                            <div className="flex flex-col space-y-4">
-                              <div className="flex justify-between items-center">
-                                <div className="flex items-center gap-2">
-																	<Dropdown
-																		menu={fieldConfigMenu}
-																		trigger={['click']}
-																		placement="bottomRight"
-																	>
-																		<Button
-																			icon={<SettingOutlined />}
-																			style={{
-																				backgroundColor: isDarkTheme ? '#374151' : '#f5f5f5',
-																				borderColor: isDarkTheme ? '#4b5563' : '#d9d9d9',
-																				color: isDarkTheme ? '#ffffff' : '#000000'
-																			}}
-																		>
-																			Configure Fields
-																		</Button>
-																	</Dropdown>
-																</div>
-                              </div>
-
-                              <Spin spinning={loading} tip="Refreshing...">
-                                <Table
-                                  columns={columns}
-                                  dataSource={processedData}
-                                  scroll={{ x: 1200 }}
-                                  pagination={{
-                                    pageSize: 10,
-                                    showSizeChanger: true,
-                                    pageSizeOptions: ['10', '20', '50'],
-                                    showQuickJumper: true,
-                                    showTotal: (total, range) => `${range[0]}-${range[1]} of ${total} items`
-                                  }}
-                                  size="small"
-                                  style={{ backgroundColor: isDarkTheme ? '#1f2937' : '#ffffff' }}
-                                  className={isDarkTheme ? 'dark-theme-table' : ''}
-                                />
-                              </Spin>
-                            </div>
-                          </Panel>
-                        </Collapse>
-                      </Card>
-                    )
+                          });
+                        }}
+                        loadingStates={loadingStates}
+                        columns={columns}
+                        fieldConfigMenu={fieldConfigMenu}
+                        getTimeDifference={getTimeDifference}
+                        isDarkTheme={isDarkTheme}
+                      />
+                    ))
                   )
-                )
           }
         </div>
       </div>

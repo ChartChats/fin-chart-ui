@@ -1,6 +1,7 @@
 import _ from 'lodash';
 import axios from '@/store/client';
 import { v4 as uuidv4 } from 'uuid';
+import moment from 'moment';
 
 import {
   createApi,
@@ -158,17 +159,35 @@ export const chatsApi = createApi({
         const chartId = chatId; // Use chatId as chartId
 
         // Check if chart exists
+        let chartResponse = { data: null };
         try {
-          const chartResponse = await axios(`/user/charts/${chartId}`);
-          if (chartResponse.data && chartResponse.data.indicators) {
-            chartUpdates.indicators = [...chartResponse.data.indicators];
-            chartUpdates.chart_pattern = [...(chartResponse.data.chart_pattern || [])];
+          chartResponse = await axios(`/user/charts/${chartId}`);
+          if (chartResponse.data) {
+            const chartData = chartResponse.data[chartId];
+            chartUpdates.indicators = [...(chartData.indicators || [])];
+            chartUpdates.chart_pattern = [...(chartData.chart_pattern || [])];
             chartExistsInitially = true;
           }
         } catch (error) {
           console.log('Chart not found, will create new if needed');
         }
 
+
+        // if chart exists initally then we will tweak the message given to LLM
+        // We need to let LLM know maybe the chart is talking about the specific ticker
+        let llmMessage = message;
+        if (chartExistsInitially) {
+          const {
+            symbol = '',
+            exchange = '',
+            description = '',
+            date_from = '',
+            date_to = ''
+          } = chartResponse.data[chartId];
+          llmMessage = `The ticker for which the below message is being asked is maybe for
+            the ticker: ${symbol} on exchange: ${exchange}, having description: ${description},
+            from date: ${moment.unix(date_from)} to date: ${moment.unix(date_to)}. The message is: ${llmMessage}`;
+        }
         const SSE_ENDPOINT = `${process.env.BACKEND_SERVER_URL}/llm/response`;
     
         try {
@@ -180,7 +199,7 @@ export const chatsApi = createApi({
               'Authorization': localStorage.getItem('token') || '',
             },
             body: JSON.stringify({
-              "prompt": message,
+              "prompt": llmMessage,
               "thread_id": chatId
             }),
             signal: controller.signal,

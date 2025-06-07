@@ -167,13 +167,13 @@ export const TVChartContainer: React.FC<TVChartProps> = (props: DefaultChartProp
               linecolor: colorMap[pattern.color] || pattern.color,
               color: colorMap[pattern.color] || pattern.color,
               linestyle: pattern.dotted ? 1 : 0,
-              linewidth: patternShape === 'Horizontal_Line'? 0.5 : pattern.dotted ? 5 : 10,
+              linewidth: patternShape === 'Horizontal_Line'? 0.5 : pattern.dotted ? 3 : 5,
               size: 50
             }
           };
           // for the text to show
-          if (pattern.text) {
-            shapeProperties['text'] = pattern.text;
+          if (pattern.label) {
+            shapeProperties['text'] = pattern.label;
           }
 
           if (functionName === 'createShape') {
