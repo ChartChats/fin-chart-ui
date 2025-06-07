@@ -1,11 +1,9 @@
 import _ from 'lodash';
-import moment from 'moment';
 import axios from '@/store/client';
 import { v4 as uuidv4 } from 'uuid';
 
 import {
   createApi,
-  fetchBaseQuery,
 } from "@reduxjs/toolkit/query/react";
 
 import {
@@ -132,11 +130,19 @@ export const chatsApi = createApi({
           role: 'user',
           timestamp: new Date().toISOString()
         };
-    
+
+        // Add initial system message with analyzing state
+        const analyzingMessage: Message = {
+          content: '',
+          role: 'system',
+          timestamp: new Date().toISOString(),
+          isAnalyzing: true
+        };
         const patchResult = dispatch(
-          chatsApi.util.updateQueryData('getChat', chatId, (draft) => {
-            draft.messages = draft.messages || [];
-            draft.messages.push(userMessage);
+            chatsApi.util.updateQueryData('getChat', chatId, (draft) => {
+              draft.messages = draft.messages || [];
+              draft.messages.push(userMessage);
+              draft.messages.push(analyzingMessage);
           })
         );
 
@@ -228,21 +234,21 @@ export const chatsApi = createApi({
                     
                     dispatch(
                       chatsApi.util.updateQueryData('getChat', chatId, (draft) => {
-                        if (!systemMessageCreated) {
-                          // Create system message if it doesn't exist
+                        const lastMessage = draft.messages[draft.messages.length - 1];
+                        if (lastMessage?.role === 'system') {
+                          // Update the analyzing message with actual content
+                          lastMessage.content = systemMessageContent;
+                          lastMessage.isAnalyzing = false;
+                        } else {
+                          // Create a new system message if needed
                           draft.messages.push({
                             role: 'system',
                             content: systemMessageContent,
-                            timestamp: new Date().toISOString()
+                            timestamp: new Date().toISOString(),
+                            isAnalyzing: false
                           });
-                          systemMessageCreated = true;
-                        } else {
-                          // Update existing system message
-                          const lastMessage = draft.messages[draft.messages.length - 1];
-                          if (lastMessage?.role === 'system') {
-                            lastMessage.content = systemMessageContent;
-                          }
                         }
+                        systemMessageCreated = true;
                       })
                     );
                   }
@@ -285,7 +291,6 @@ export const chatsApi = createApi({
                   // Handle Screener response (create new screener always)
                   if (parsedJsonData.action_type === 'screen_stock' && parsedJsonData.records) {
                     screenerUpdates = {
-                      id: uuidv4(),
                       query: message,
                       records: parsedJsonData.records,
                       updatedAt: new Date().toISOString(),

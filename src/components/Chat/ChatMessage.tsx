@@ -13,6 +13,7 @@ interface ChatMessageProps {
     content: string;
     role: string;
     timestamp: string;
+    isAnalyzing?: boolean;
   };
 }
 
@@ -29,7 +30,7 @@ export function ChatMessage({ message }: ChatMessageProps) {
   // Safely format the timestamp with a fallback
   const formattedTime = (() => {
     try {
-      return message.timestamp ? format(new Date(message.timestamp), 'HH:mm') : '';
+      return message.timestamp ? format(new Date(message.timestamp), 'MMM d, yyyy HH:mm') : '';
     } catch (error) {
       console.error('Invalid timestamp:', message.timestamp);
       return '';
@@ -118,38 +119,56 @@ export function ChatMessage({ message }: ChatMessageProps) {
             message.role === "user" ? "bg-primary text-primary-foreground ml-4" : "bg-muted text-foreground mr-4"
           ) }
         >
-          <ReactMarkdown 
-            remarkPlugins={[remarkGfm]}
-            rehypePlugins={[[rehypeExternalLinks, { target: '_blank', rel: ['nofollow', 'noopener', 'noreferrer'] }]]}
-            components={{
-              a: ({ ...props }) => (
-                <a className="text-blue-500 hover:text-blue-600 underline" {...props} />
-              ),
-              img: ({ ...props }) => (
-                <img className="max-w-full h-auto rounded-lg my-2" {...props} />
-              ),
-              code: ({ children, className, ...props }: any) => {
-                const match = /language-(\w+)/.exec(className || '');
-                return match ? (
-                  <code className="block bg-gray-100 dark:bg-gray-800 rounded p-2 my-2" {...props}>
-                    {children}
-                  </code>
-                ) : (
-                  <code className="bg-gray-100 dark:bg-gray-800 rounded px-1" {...props}>
-                    {children}
-                  </code>
-                );
-              },
-              ul: ({ ...props }) => (
-                <ul className="list-disc list-inside my-2" {...props} />
-              ),
-              ol: ({ ...props }) => (
-                <ol className="list-decimal list-inside my-2" {...props} />
-              ),
-            }}
-          >
-            {message.content}
-          </ReactMarkdown>
+          {
+            message.isAnalyzing
+              ? (
+                  <div className="flex">
+                    <span className="mx-2">
+                      Analyzing and processing your question
+                    </span>
+                    <span className="mx-2">
+                      <div className="flex items-center gap-2 text-sm text-muted-foreground animate-pulse">
+                        ......
+                      </div>
+                    </span>
+                  </div>
+                  
+                )
+              : (
+                  <ReactMarkdown 
+                    remarkPlugins={ [remarkGfm] }
+                    rehypePlugins={ [[rehypeExternalLinks, { target: '_blank', rel: ['nofollow', 'noopener', 'noreferrer'] }]] }
+                    components={{
+                      a: ({ ...props }) => (
+                        <a className="text-blue-500 hover:text-blue-600 underline" {...props} />
+                      ),
+                      img: ({ ...props }) => (
+                        <img className="max-w-full h-auto rounded-lg my-2" {...props} />
+                      ),
+                      code: ({ children, className, ...props }: any) => {
+                        const match = /language-(\w+)/.exec(className || '');
+                        return match ? (
+                          <code className="block bg-gray-100 dark:bg-gray-800 rounded p-2 my-2" { ...props }>
+                            {children}
+                          </code>
+                        ) : (
+                          <code className="bg-gray-100 dark:bg-gray-800 rounded px-1" { ...props }>
+                            {children}
+                          </code>
+                        );
+                      },
+                      ul: ({ ...props }) => (
+                        <ul className="list-disc list-inside my-2" { ...props } />
+                      ),
+                      ol: ({ ...props }) => (
+                        <ol className="list-decimal list-inside my-2" { ...props } />
+                      ),
+                    }}
+                  >
+                    { message.content }
+                  </ReactMarkdown>
+                )
+          }
         </div>
       </div>
     </div>

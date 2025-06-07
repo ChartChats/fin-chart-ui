@@ -28,10 +28,11 @@ export const screenerApi = createApi({
             data: response.data[screenerId]
           };
         } catch (error) {
+          console.error('getScreener error:', error);
           return {
             error: {
               status: 'CUSTOM_ERROR',
-              error: 'Failed to create screener'
+              error: 'Failed to fetch screener'
             }
           };
         }
@@ -73,8 +74,17 @@ export const screenerApi = createApi({
               ...screener,
             }
           });
+          
+          // Dispatch custom event to notify the component
+          window.dispatchEvent(new CustomEvent('newScreenerGenerated', { 
+            detail: { screenerId } 
+          }));
+          
           return {
-            data: response.data
+            data: {
+              id: screenerId,
+              ...response.data
+            }
           };
         } catch (error) {
           return {
@@ -106,9 +116,13 @@ export const screenerApi = createApi({
             }
           });
           return {
-            data: response.data
+            data: {
+              id,
+              ...response.data
+            }
           };
         } catch (error) {
+          console.error('updateScreener error:', error);
           return {
             error: {
               status: 'CUSTOM_ERROR',

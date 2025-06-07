@@ -13,3 +13,10 @@ export interface ScreenerData {
   updatedAt: string;
   id?: string;
 }
+
+export interface FieldConfig {
+  key: string;
+  title: string;
+  type: 'currency' | 'percentage' | 'change' | 'number' | 'text';
+  width?: number;
+}

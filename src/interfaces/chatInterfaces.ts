@@ -6,6 +6,7 @@ export interface Message {
   action_type?: string;
   charts?: any[];
   message?: string;
+  isAnalyzing?: boolean;
 }
 
 export interface Chat {
