@@ -344,12 +344,20 @@ export const chatsApi = createApi({
               }));
             } else {
               dispatch(chartApi.endpoints.addChart.initiate(chartData));
+              // Dispatch event for new chart
+              window.dispatchEvent(new CustomEvent('newChartGenerated', { 
+                detail: { chartId: chartId } 
+              }));
             }
           }
 
           // 3. Handle create screener if we have any screener data
           if (!_.isEmpty(screenerUpdates)) {
-            dispatch(screenerApi.endpoints.addScreener.initiate(screenerUpdates));
+            const result = await dispatch(screenerApi.endpoints.addScreener.initiate(screenerUpdates)).unwrap();
+            // Dispatch event for new screener
+            window.dispatchEvent(new CustomEvent('newScreenerGenerated', { 
+              detail: { screenerId: result.id } 
+            }));
           }
 
           return { data: null };
