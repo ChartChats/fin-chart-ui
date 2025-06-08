@@ -162,10 +162,13 @@ export const chatsApi = createApi({
         let chartResponse = { data: null };
         try {
           chartResponse = await axios(`/user/charts/${chartId}`);
-          if (chartResponse.data) {
+          if (!_.isEmpty(chartResponse.data[chartId])) {
             const chartData = chartResponse.data[chartId];
-            chartUpdates.indicators = [...(chartData.indicators || [])];
-            chartUpdates.chart_pattern = [...(chartData.chart_pattern || [])];
+            chartUpdates = {
+              ...chartData,
+              indicators: [...(chartData.indicators || [])],
+              chart_pattern: [...(chartData.chart_pattern || [])],
+            };
             chartExistsInitially = true;
           }
         } catch (error) {
@@ -184,9 +187,9 @@ export const chatsApi = createApi({
             date_from = '',
             date_to = ''
           } = chartResponse.data[chartId];
-          llmMessage = `The ticker for which the below message is being asked is maybe for
-            the ticker: ${symbol} on exchange: ${exchange}, having description: ${description},
-            from date: ${moment.unix(date_from)} to date: ${moment.unix(date_to)}. The message is: ${llmMessage}`;
+          llmMessage = `The ticker for which the below message is being asked is maybe for` +
+            `the ticker: ${symbol} on exchange: ${exchange}, having description: ${description},` +
+            `from date: ${moment.unix(date_from)} to date: ${moment.unix(date_to)}. The message is: ${llmMessage}`;
         }
         const SSE_ENDPOINT = `${process.env.BACKEND_SERVER_URL}/llm/response`;
     

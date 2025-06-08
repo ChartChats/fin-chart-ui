@@ -1,6 +1,5 @@
 import React from 'react';
 import _ from 'lodash';
-
 import {
   Table,
   Card,
@@ -11,6 +10,7 @@ import {
   Tooltip,
   Spin,
   Collapse,
+  message,
 } from 'antd';
 
 import {
@@ -20,31 +20,32 @@ import {
 import {
   SettingOutlined,
   ReloadOutlined,
-  DeleteOutlined
+  DeleteOutlined,
+  StarOutlined
 } from '@ant-design/icons';
 
 const { Text } = Typography;
 const { Panel } = Collapse;
 
-// Separate component for each screener card to handle individual data fetching
 const ScreenerCard = (props) => {
-
   const { 
-  screener,
-  isExpanded,
-  onToggleExpand,
-  onRetry,
-  onDelete,
-  loadingStates,
-  columns,
-  fieldConfigMenu,
-  getTimeDifference,
-  isDarkTheme
-} = props;
+    screener,
+    isExpanded,
+    onToggleExpand,
+    onRetry,
+    onDelete,
+    onAddToWatchlist,
+    loadingStates,
+    columns,
+    fieldConfigMenu,
+    getTimeDifference,
+    isDarkTheme
+  } = props;
 
-  // Only fetch data when this specific screener is expanded
+  const [selectedRowKeys, setSelectedRowKeys] = React.useState<React.Key[]>([]);
+
   const { data: screenerData, isLoading, error, refetch } = useGetScreenerQuery(screener.id, {
-    skip: !isExpanded // Skip the query if not expanded
+    skip: !isExpanded
   });
 
   const getProcessedData = () => {
@@ -54,7 +55,7 @@ const ScreenerCard = (props) => {
       const prevClose = item.open;
       return {
         ...item,
-        key: `${screener.id}-${index}`, // Unique key per screener
+        key: `${screener.id}-${index}`,
         price_change_1d_percent: changePercent,
         prev_close: prevClose
       };
@@ -66,7 +67,7 @@ const ScreenerCard = (props) => {
   const handleRetry = (e) => {
     e.stopPropagation();
     onRetry(screener.id);
-    refetch(); // Refetch the actual data
+    refetch();
   };
 
   const handleDelete = (e) => {
@@ -74,9 +75,36 @@ const ScreenerCard = (props) => {
     onDelete(screener.id);
   };
 
-  const handleExpansionChange = (keys: string[]) => {
+  const handleExpansionChange = (keys) => {
     const isNowExpanded = keys.includes(screener.id);
     onToggleExpand(screener.id, isNowExpanded);
+  };
+
+  const onSelectChange = (newSelectedRowKeys: React.Key[]) => {
+    setSelectedRowKeys(newSelectedRowKeys);
+  };
+
+  const rowSelection = {
+    selectedRowKeys,
+    onChange: onSelectChange,
+    columnWidth: 48,
+    fixed: 'left' as const,
+  };
+
+  const handleAddToWatchlist = () => {
+    if (selectedRowKeys.length === 0) {
+      message.warning('Please select stocks to add to watchlist');
+      return;
+    }
+
+    const selectedRows = processedData.filter(row => 
+      selectedRowKeys.includes(row.key)
+    );
+    
+    console.log('Selected stocks for watchlist:', selectedRows);
+    onAddToWatchlist(selectedRows);
+    setSelectedRowKeys([]);
+    message.success(`${selectedRows.length} stocks added to watchlist`);
   };
 
   return (
@@ -186,6 +214,18 @@ const ScreenerCard = (props) => {
                     Configure Fields
                   </Button>
                 </Dropdown>
+                {selectedRowKeys.length > 0 && (
+                  <Button
+                    type="primary"
+                    icon={<StarOutlined />}
+                    onClick={handleAddToWatchlist}
+                    style={{
+                      backgroundColor: isDarkTheme ? '#2563eb' : '#1890ff',
+                    }}
+                  >
+                    Add to Watchlist ({selectedRowKeys.length})
+                  </Button>
+                )}
               </div>
             </div>
 
@@ -198,15 +238,10 @@ const ScreenerCard = (props) => {
                 <Table
                   columns={columns}
                   dataSource={processedData}
-                  scroll={{ x: 1200 }}
-                  pagination={{
-                    pageSize: 10,
-                    showSizeChanger: true,
-                    pageSizeOptions: ['10', '20', '50'],
-                    showQuickJumper: true,
-                    showTotal: (total, range) => `${range[0]}-${range[1]} of ${total} items`
-                  }}
+                  scroll={{ x: 1200, y: 500 }}
+                  pagination={false}
                   size="small"
+                  rowSelection={rowSelection}
                   style={{ backgroundColor: isDarkTheme ? '#1f2937' : '#ffffff' }}
                   className={isDarkTheme ? 'dark-theme-table' : ''}
                 />

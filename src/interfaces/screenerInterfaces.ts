@@ -20,3 +20,24 @@ export interface FieldConfig {
   type: 'currency' | 'percentage' | 'change' | 'number' | 'text';
   width?: number;
 }
+
+export interface WatchlistTableProps {
+  watchlistData: any[];
+  onAddTicker: (ticker: string) => void;
+  onRemoveFromWatchlist: (keys: string[]) => void;
+  isDarkTheme: boolean;
+  columns: any[];
+}
+
+export interface ScreenerDashboardProps {
+  screeners: any[];
+  loadingStates: Record<string, boolean>;
+  columns: any[];
+  fieldConfigMenu: any;
+  getTimeDifference: (screener: any) => string;
+  isDarkTheme: boolean;
+  onRetry: (screenerId: string) => void;
+  onDelete: (screenerId: string) => void;
+  onToggleExpand: (screenerId: string, isExpanded: boolean) => void;
+  expandedScreeners: string[];
+}

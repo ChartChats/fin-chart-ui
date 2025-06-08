@@ -1,14 +1,11 @@
 import React, { useState, useMemo, useEffect } from 'react';
 import _ from 'lodash';
 import { useTheme } from "@/contexts/ThemeContext";
-import ScreenerCard from "@/components/Screener/ScreenerCard";
+import ScreenerDashboard from "@/components/Screener/ScreenerDashboard";
 
 import {
   Checkbox,
   Typography,
-  Spin,
-  Collapse,
-  Empty,
   Modal
 } from 'antd';
 
@@ -28,7 +25,6 @@ import {
 } from '@/utils/AppConstants';
 
 const { Text, Title } = Typography;
-const { Panel } = Collapse;
 
 const Screener = () => {
   const { theme } = useTheme();
@@ -50,7 +46,6 @@ const Screener = () => {
     return null;
   });
 
-  // Track if screener section is expanded
   const [isScreenerExpanded, setIsScreenerExpanded] = useState(() => {
     const stored = localStorage.getItem('screenerSectionExpanded');
     return stored ? JSON.parse(stored) : true;
@@ -75,7 +70,7 @@ const Screener = () => {
     } else {
       localStorage.removeItem('selectedScreenerId');
     }
-  }, [selectedScreenerId]);
+  }, [selectedScreenerId, expandedScreeners]);
 
   // Save expanded screeners to localStorage
   useEffect(() => {
@@ -238,74 +233,41 @@ const Screener = () => {
 
   return (
     <div className="screener-container h-full w-full flex flex-col">
-      <div
-        className="p-4 border-b border-gray-300 flex-shrink-0"
-        style={{
-          background: isDarkTheme ? '#1f2937' : '#ffffff'
-        }}
-      >
-        <Title level={2} style={{ margin: 0 }}>
-          Stock Screener
-        </Title>
-      </div>
-      
       <div className="flex-1 overflow-y-auto px-4 pb-4" style={{ minHeight: 0 }}>
-        <div className="space-y-4 py-4">
-          {
-            isLoadingScreeners
-              ? (
-                  <div className="flex justify-center p-8">
-                    <Spin size="large" tip="Loading screeners..." />
-                  </div>
-                )
-              : !screeners?.length
-                ? (
-                    <div className="flex-col justify-center p-8">
-                      <Empty description="No screeners found" />
-                    </div>
-                  )
-                : (
-                    _.map(screeners, (screener) => (
-                      <ScreenerCard
-                        key={screener.id}
-                        screener={screener}
-                        isExpanded={expandedScreeners.includes(screener.id)}
-                        isSelected={selectedScreenerId === screener.id}
-                        onToggleExpand={(screenerId, isExpanded) => {
-                          if (isExpanded) {
-                            setExpandedScreeners(prev => [...prev, screenerId]);
-                            setSelectedScreenerId(screenerId);
-                            setIsScreenerExpanded(true);
-                          } else {
-                            setExpandedScreeners(prev => prev.filter(id => id !== screenerId));
-                            if (selectedScreenerId === screenerId) {
-                              setSelectedScreenerId(null);
-                            }
-                          }
-                        }}
-                        onRetry={handleRetry}
-                        onDelete={(screenerId) => {
-                          Modal.confirm({
-                            title: 'Delete Screener',
-                            content: 'Are you sure you want to delete this screener?',
-                            okText: 'Delete',
-                            cancelText: 'Cancel',
-                            okButtonProps: { danger: true },
-                            onOk: () => {
-                              deleteScreenerMutation(screenerId);
-                            }
-                          });
-                        }}
-                        loadingStates={loadingStates}
-                        columns={columns}
-                        fieldConfigMenu={fieldConfigMenu}
-                        getTimeDifference={getTimeDifference}
-                        isDarkTheme={isDarkTheme}
-                      />
-                    ))
-                  )
-          }
-        </div>
+        <ScreenerDashboard
+          screeners={screeners || []}
+          loadingStates={loadingStates}
+          columns={columns}
+          fieldConfigMenu={fieldConfigMenu}
+          getTimeDifference={getTimeDifference}
+          isDarkTheme={isDarkTheme}
+          onRetry={handleRetry}
+          onDelete={(screenerId) => {
+            Modal.confirm({
+              title: 'Delete Screener',
+              content: 'Are you sure you want to delete this screener?',
+              okText: 'Delete',
+              cancelText: 'Cancel',
+              okButtonProps: { danger: true },
+              onOk: () => {
+                deleteScreenerMutation(screenerId);
+              }
+            });
+          }}
+          onToggleExpand={(screenerId, isExpanded) => {
+            if (isExpanded) {
+              setExpandedScreeners(prev => [...prev, screenerId]);
+              setSelectedScreenerId(screenerId);
+              setIsScreenerExpanded(true);
+            } else {
+              setExpandedScreeners(prev => prev.filter(id => id !== screenerId));
+              if (selectedScreenerId === screenerId) {
+                setSelectedScreenerId(null);
+              }
+            }
+          }}
+          expandedScreeners={expandedScreeners}
+        />
       </div>
     </div>
   );
