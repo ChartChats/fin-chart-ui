@@ -1,4 +1,4 @@
-import symbolTypes from "../../mock/symbolTypes.json";
+import symbolTypes from "@/mock/symbolTypes.json";
 import axios from '@/store/client';
 
 import {

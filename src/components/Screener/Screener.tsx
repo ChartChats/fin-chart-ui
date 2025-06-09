@@ -1,4 +1,4 @@
-import React, { useState, useMemo, useEffect } from 'react';
+import React, { useState, useEffect } from 'react';
 import _ from 'lodash';
 import { useTheme } from "@/contexts/ThemeContext";
 import ScreenerDashboard from "@/components/Screener/ScreenerDashboard";
@@ -21,7 +21,8 @@ import {
 
 import {
   defaultFields,
-  availableCustomFields
+  availableCustomFields,
+	defaultSelectedCustomFields
 } from '@/utils/AppConstants';
 
 const { Text, Title } = Typography;
@@ -108,9 +109,7 @@ const Screener = () => {
   
   const [loadingStates, setLoadingStates] = useState<Record<string, boolean>>({});
   const [currentTime, setCurrentTime] = useState(new Date());
-  const [selectedCustomFields, setSelectedCustomFields] = useState([
-    'volume', 'trailing_pe', 'rsi', 'beta'
-  ]);
+  const [selectedCustomFields, setSelectedCustomFields] = useState(defaultSelectedCustomFields);
 
   const [deleteScreenerMutation] = useRemoveScreenerMutation();
 
@@ -169,13 +168,25 @@ const Screener = () => {
   const columns = [
     {
       title: 'Stock',
-      dataIndex: 'stock',
+      dataIndex: 'symbol',
       key: 'stock',
       fixed: true as const,
       width: 120,
-      render: (text) => (
+      render: (stock: string) => (
         <Text strong style={{ color: isDarkTheme ? '#ffffff' : '#000000' }}>
-          {text}
+          { stock }
+        </Text>
+      )
+    },
+		{
+      title: 'Exchange',
+      dataIndex: 'exchange',
+      key: 'exchange',
+      fixed: true as const,
+      width: 100,
+      render: (exchange: string) => (
+        <Text strong style={{ color: isDarkTheme ? '#ffffff' : '#000000' }}>
+          {	exchange }
         </Text>
       )
     },

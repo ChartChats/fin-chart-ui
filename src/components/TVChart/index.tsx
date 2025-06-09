@@ -340,7 +340,9 @@ export const TVChartContainer: React.FC<TVChartProps> = (props: DefaultChartProp
   }, [props.indicators]);
 
   useEffect(() => {
-    updateChartPatterns();
+    setTimeout(() => {
+      updateChartPatterns();
+    }, 1500);
   }, [props.chartPatterns]);
 
   useEffect(() => {

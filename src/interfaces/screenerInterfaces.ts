@@ -41,3 +41,14 @@ export interface ScreenerDashboardProps {
   onToggleExpand: (screenerId: string, isExpanded: boolean) => void;
   expandedScreeners: string[];
 }
+
+export interface SymbolSearchResult {
+  symbol: string;
+  country: string;
+  currency: string;
+  exchange: string;
+  exchange_timezone: string;
+  description: string;
+  instrument_type: string;
+  key?: string;
+}

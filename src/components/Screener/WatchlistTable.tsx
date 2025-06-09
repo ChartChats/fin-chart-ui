@@ -1,8 +1,8 @@
 import React, { useState, useEffect, useRef } from 'react';
+
 import { 
   Table, 
   Button, 
-  Input, 
   Typography, 
   Space, 
   Popconfirm,
@@ -14,6 +14,7 @@ import {
 } from '@ant-design/icons';
 import Sortable from 'sortablejs';
 import { WatchlistTableProps } from "@/interfaces/screenerInterfaces";
+import SymbolSearchModal from "@/components/Screener/SymbolSearchModal";
 
 const { Text } = Typography;
 
@@ -26,9 +27,12 @@ const WatchlistTable = (props: WatchlistTableProps) => {
     columns
   } = props;
 
-  const [newTicker, setNewTicker] = useState('');
   const [selectedRowKeys, setSelectedRowKeys] = useState<string[]>([]);
   const [dataSource, setDataSource] = useState(watchlistData);
+  
+  // Modal state
+  const [isModalVisible, setIsModalVisible] = useState(false);
+  
   const tableRef = useRef<HTMLDivElement>(null);
   const sortableRef = useRef<Sortable | null>(null);
   const tableBodyRef = useRef<HTMLElement | null>(null);
@@ -75,10 +79,15 @@ const WatchlistTable = (props: WatchlistTableProps) => {
   }, []); // Init once on mount
 
   const handleAddTicker = () => {
-    if (newTicker.trim()) {
-      onAddTicker(newTicker.trim());
-      setNewTicker('');
-    }
+    setIsModalVisible(true);
+  };
+
+  const handleModalClose = () => {
+    setIsModalVisible(false);
+  };
+
+  const handleTickerAdded = (ticker: string) => {
+    onAddTicker(ticker);
   };
 
   const onSelectChange = (newSelectedRowKeys: string[]) => {
@@ -129,74 +138,92 @@ const WatchlistTable = (props: WatchlistTableProps) => {
   ];
 
   return (
-    <div 
-      ref={tableRef}
-      style={{ 
-        marginBottom: '24px',
-        maxHeight: '40vh',
-        display: 'flex',
-        flexDirection: 'column',
-        overflow: 'auto'
-      }}
-    >
-      <div style={{ 
-        display: 'flex', 
-        justifyContent: 'space-between', 
-        alignItems: 'center', 
-        marginBottom: '16px',
-        flexShrink: 0
-      }}>
-        <Text strong style={{ fontSize: '16px', color: isDarkTheme ? '#ffffff' : '#000000' }}>
-          Watchlist ({watchlistData.length})
-          {hasSelected && (
-            <span style={{ marginLeft: 8 }}>
-              <Popconfirm
-                title={`Delete ${selectedRowKeys.length} items?`}
-                onConfirm={handleBulkDelete}
-                okText="Yes"
-                cancelText="No"
-              >
-                <Button
-                  type="link"
-                  danger
-                  icon={<DeleteOutlined />}
-                  size="small"
-                >
-                  Delete {selectedRowKeys.length} items
-                </Button>
-              </Popconfirm>
-            </span>
-          )}
-        </Text>
-        <Space>
-          <Button
-            type="primary"
-            icon={<PlusOutlined />}
-            onClick={handleAddTicker}
-          >
-            Add Ticker
-          </Button>
-        </Space>
-      </div>
-      
-      <Table
-        columns={tableColumns}
-        dataSource={dataSource}
-        scroll={{ 
-          x: 'max-content',
-          y: 'calc(40vh - 100px)'
-        }}
-        size="small"
-        pagination={false}
+    <>
+      <div 
+        ref={tableRef}
         style={{ 
-          backgroundColor: isDarkTheme ? '#1f2937' : '#ffffff',
-          flex: 1,
-          overflow: 'hidden'
+          marginBottom: '24px',
+          maxHeight: '40vh',
+          display: 'flex',
+          flexDirection: 'column',
+          overflow: 'auto'
         }}
-        rowKey="key"
-        rowSelection={rowSelection}
+      >
+        <div
+          style={ { 
+            display: 'flex', 
+            justifyContent: 'space-between', 
+            alignItems: 'center', 
+            marginBottom: '16px',
+            flexShrink: 0
+          } }
+        >
+          <Text strong style={{ fontSize: '20px', color: isDarkTheme ? '#ffffff' : '#000000' }}>
+            <span className="align-middle">
+              <span className="mx-2">
+                Watchlist
+              </span>
+              <span className="mx-2">
+                ( { watchlistData.length } )
+              </span>
+            </span>
+            {
+              hasSelected &&
+              <span style={{ marginLeft: 8, fontSize: '16px' }}>
+                <Popconfirm
+                  title={ `Delete ${selectedRowKeys.length} items?` }
+                  onConfirm={handleBulkDelete}
+                  okText="Yes"
+                  cancelText="No"
+                >
+                  <Button
+                    type="link"
+                    danger
+                    icon={<DeleteOutlined />}
+                    size="small"
+                  >
+                    Delete {selectedRowKeys.length} items
+                  </Button>
+                </Popconfirm>
+              </span>
+            }
+          </Text>
+          <Space>
+            <Button
+              type="primary"
+              icon={<PlusOutlined />}
+              onClick={handleAddTicker}
+            >
+              Add Ticker
+            </Button>
+          </Space>
+        </div>
+        
+        <Table
+          columns={tableColumns}
+          dataSource={dataSource}
+          scroll={{ 
+            x: 'max-content',
+            y: 'calc(40vh - 100px)'
+          }}
+          size="small"
+          pagination={false}
+          style={{ 
+            backgroundColor: isDarkTheme ? '#1f2937' : '#ffffff',
+            flex: 1,
+            overflow: 'hidden'
+          }}
+          rowKey="key"
+          rowSelection={rowSelection}
+        />
+      </div>
+
+      <SymbolSearchModal
+        visible={ isModalVisible }
+        onClose={ handleModalClose }
+        onAddTicker={ handleTickerAdded }
       />
-    </div>
+    </>
   );
 };
 
