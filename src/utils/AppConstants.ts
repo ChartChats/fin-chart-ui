@@ -1,28 +1,33 @@
+import { title } from "process";
 
 export const defaultFields = [
-  { key: 'close', title: 'Value', type: 'currency' },
-  { key: 'price_change_1d', title: 'Change', type: 'change' },
-  { key: 'price_change_1d_percent', title: 'Chg%', type: 'percentage' },
-  { key: 'open', title: 'Open', type: 'currency' },
-  { key: 'high', title: 'High', type: 'currency' },
-  { key: 'low', title: 'Low', type: 'currency' },
-  { key: 'prev_close', title: 'Prev', type: 'currency' }
+  { key: 'Close', title: 'Value', type: 'currency' },
+  { key: '1 Day Price Change (%)', title: 'Change', type: 'change' },
+  { key: '1 Day Price Change (%)', title: 'Chg%', type: 'percentage' },
+  { key: 'Open', title: 'Open', type: 'currency' },
+  { key: 'High', title: 'High', type: 'currency' },
+  { key: 'Low', title: 'Low', type: 'currency' },
+  { key: 'Close', title: 'Close', type: 'currency' }
 ];
 
 export const availableCustomFields = [
-  { key: 'volume', title: 'Volume', type: 'number' },
+  { key: 'Volume', title: 'Volume', type: 'number' },
   { key: 'marketcap', title: 'Market Cap', type: 'currency' },
-  { key: 'trailing_pe', title: 'P/E', type: 'number' },
-  { key: 'forward_pe', title: 'Forward P/E', type: 'number' },
-  { key: 'price_to_book', title: 'P/B', type: 'number' },
-  { key: 'dividend_yield', title: 'Div Yield', type: 'percentage' },
-  { key: 'beta', title: 'Beta', type: 'number' },
-  { key: 'rsi', title: 'RSI', type: 'number' },
-  { key: 'macd_line', title: 'MACD', type: 'number' },
-  { key: 'earnings_growth', title: 'EPS Growth', type: 'percentage' },
-  { key: 'revenue_growth', title: 'Revenue Growth', type: 'percentage' },
-  { key: 'return_on_equity', title: 'ROE', type: 'percentage' },
-  { key: 'return_on_assets', title: 'ROA', type: 'percentage' },
-  { key: 'week_52_high', title: '52W High', type: 'currency' },
-  { key: 'week_52_low', title: '52W Low', type: 'currency' }
+  { key: 'RSI', title: 'RSI', type: 'number' },
+  { key: 'MACD Line', title: 'MACD', type: 'number' },
+  { key: 'CCI', title: 'CCI', type: 'number' },
+  { key: 'ADX', title: 'ADX', type: 'number' },
+  { key: 'WilliamR', title: 'Williams %R', type: 'number' },
+  { key: 'ROC', title: 'Rate of Change', type: 'number' },
+  { key: 'Money Flow Index (MFI)', title: 'Money Flow Index (MFI)', type: 'number' },
+  { key: 'Chaikin Money Flow (CMF)', title: 'Chaikin Money Flow (CMF)', type: 'number' },
+  { key: 'Force Index (FI)', title: 'Force Index (FI)', type: 'number' },
+  { key: '1 Month Volatility (%)', title: '1M Volatility', type: 'percentage' },
+  { key: '3 Month Volatility (%)', title: '3M Volatility', type: 'percentage' },
+  { key: 'Closest Resistance', title: 'Closest Resistance', type: 'currency' },
+  { key: 'Closest Support', title: 'Closest Support', type: 'currency' },
+  { key: '52 Week High', title: '52 Week High', type: 'currency' },
+  { key: '52 Week Low', title: '52 Week Low', type: 'currency' }
 ];
+
+export const defaultSelectedCustomFields = ['Volume', 'RSI'];

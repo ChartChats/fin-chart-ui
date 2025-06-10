@@ -119,10 +119,10 @@ export const TVChartContainer: React.FC<TVChartProps> = (props: DefaultChartProp
     if (_.size(props.indicators) > 0) {
       props.indicators.forEach(indicator => {
         tvWidget.chart().createStudy(
-          indicator.name,
+          indicator.value,
           false,
           false,
-          indicator.properties || getIndicatorInputs(tvWidget, indicator.name),
+          indicator.properties || getIndicatorInputs(tvWidget, indicator.value),
         );
       });
     }
@@ -316,7 +316,7 @@ export const TVChartContainer: React.FC<TVChartProps> = (props: DefaultChartProp
       // Apply initial patterns - delay to ensure chart is fully loaded
       setTimeout(() => {
         updateChartPatterns();
-      }, 1000);
+      }, 1500);
     });
 
     // Cleanup on unmount
@@ -340,7 +340,9 @@ export const TVChartContainer: React.FC<TVChartProps> = (props: DefaultChartProp
   }, [props.indicators]);
 
   useEffect(() => {
-    updateChartPatterns();
+    setTimeout(() => {
+      updateChartPatterns();
+    }, 1500);
   }, [props.chartPatterns]);
 
   useEffect(() => {

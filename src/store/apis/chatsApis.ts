@@ -149,11 +149,7 @@ export const chatsApi = createApi({
 
         // Initialize accumulators
         let systemMessageContent = '';
-        let systemMessageCreated = false;
-        let chartUpdates: Partial<ChartData> = {
-          indicators: [],
-          chart_pattern: [],
-        };
+        let chartUpdates: Partial<ChartData> = {};
         let screenerUpdates: Partial<ScreenerData> = {};
         let chartExistsInitially = false;
         const chartId = chatId; // Use chatId as chartId
@@ -162,10 +158,13 @@ export const chatsApi = createApi({
         let chartResponse = { data: null };
         try {
           chartResponse = await axios(`/user/charts/${chartId}`);
-          if (chartResponse.data) {
+          if (!_.isEmpty(chartResponse.data[chartId])) {
             const chartData = chartResponse.data[chartId];
-            chartUpdates.indicators = [...(chartData.indicators || [])];
-            chartUpdates.chart_pattern = [...(chartData.chart_pattern || [])];
+            chartUpdates = {
+              ...chartData,
+              indicators: [...(chartData.indicators || [])],
+              chart_pattern: [...(chartData.chart_pattern || [])],
+            };
             chartExistsInitially = true;
           }
         } catch (error) {
@@ -184,9 +183,9 @@ export const chatsApi = createApi({
             date_from = '',
             date_to = ''
           } = chartResponse.data[chartId];
-          llmMessage = `The ticker for which the below message is being asked is maybe for
-            the ticker: ${symbol} on exchange: ${exchange}, having description: ${description},
-            from date: ${moment.unix(date_from)} to date: ${moment.unix(date_to)}. The message is: ${llmMessage}`;
+          llmMessage = `The ticker for which the below message is being asked is maybe for` +
+            `the ticker: ${symbol} on exchange: ${exchange}, having description: ${description},` +
+            `from date: ${moment.unix(date_from)} to date: ${moment.unix(date_to)}. The message is: ${llmMessage}`;
         }
         const SSE_ENDPOINT = `${process.env.BACKEND_SERVER_URL}/llm/response`;
     
@@ -267,15 +266,16 @@ export const chatsApi = createApi({
                             isAnalyzing: false
                           });
                         }
-                        systemMessageCreated = true;
                       })
                     );
                   }
 
                   // Accumulate chart indicators
                   if (parsedJsonData.action_type === 'plot_indicator' && parsedJsonData.indicators) {
+                    chartUpdates.indicators = chartUpdates.indicators || [];
+
                     parsedJsonData.indicators.forEach((ind: any) => {
-                      if (!chartUpdates.indicators.some(i => 
+                      if (!chartUpdates.indicators.some(i =>
                         i.name === ind.name && i.value === ind.value
                       )) {
                         chartUpdates.indicators.push(ind);
@@ -285,6 +285,8 @@ export const chatsApi = createApi({
 
                   // Accumulate chart patterns
                   if (parsedJsonData.action_type === 'plot_chart_pattern' && parsedJsonData.chart_pattern) {
+                    chartUpdates.chart_pattern = chartUpdates.chart_pattern || [];
+
                     parsedJsonData.chart_pattern.forEach((pattern: any) => {
                       chartUpdates.chart_pattern.push(pattern);
                     });
@@ -345,7 +347,7 @@ export const chatsApi = createApi({
           });
 
           // 2. Handle chart update/create if we have any chart data
-          if (chartUpdates.indicators.length > 0 || chartUpdates.chart_pattern.length > 0) {
+          if (!_.isEmpty(chartUpdates)) {
             const chartData: ChartData = {
               id: chartId,
               type: 'line',

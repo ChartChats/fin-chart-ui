@@ -1,7 +1,7 @@
 import React, { useState, useRef, useCallback, useEffect, useMemo } from "react";
 import { Card } from "antd";
 import { useTheme } from "@/contexts/ThemeContext";
-import Screener from "./Screener/Screener";
+import Screener from "@/components/Screener/Screener";
 import { ChartSystem } from "./ChartSystem/ChartSystem";
 import Chat from "./Chat/Chat";
 import { useIsMobile } from "@/hooks/use-mobile";
