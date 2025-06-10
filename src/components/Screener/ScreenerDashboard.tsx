@@ -65,23 +65,21 @@ const ScreenerDashboard = (props: ScreenerDashboardProps) => {
 
   return (
     <div style={{ padding: '16px' }}>
-      {watchlist && watchlistSymbolsData.length > 0 && (
-        <>
-          <WatchlistTable
-            watchlistData={watchlistSymbolsData}
-            onAddTicker={handleAddTicker}
-            onRemoveFromWatchlist={handleRemoveFromWatchlist}
-            isDarkTheme={isDarkTheme}
-            columns={columns}
-          />
-          <Divider 
-            style={{ 
-              borderColor: isDarkTheme ? '#374151' : '#e5e7eb',
-              margin: '24px 0' 
-            }} 
-          />
-        </>
-      )}
+      <>
+        <WatchlistTable
+          watchlistData={watchlistSymbolsData}
+          onAddTicker={handleAddTicker}
+          onRemoveFromWatchlist={handleRemoveFromWatchlist}
+          isDarkTheme={isDarkTheme}
+          columns={columns}
+        />
+        <Divider
+          style={{ 
+            borderColor: isDarkTheme ? '#374151' : '#e5e7eb',
+            margin: '24px 0' 
+          }} 
+        />
+      </>
 
       <div style={{ marginBottom: '16px' }}>
         <Title 
