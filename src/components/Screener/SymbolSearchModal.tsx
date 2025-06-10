@@ -4,6 +4,11 @@ import symbolTypes from "@/mock/symbolTypes.json";
 import { useTheme } from '@/contexts/ThemeContext';
 
 import {
+  useLazyGetStockDetailsQuery,
+  useAddToWatchlistMutation
+} from '@/store/index';
+
+import {
   SymbolSearchResult
 } from "@/interfaces/screenerInterfaces";
 
@@ -39,6 +44,9 @@ interface SymbolSearchModalProps {
 const SymbolSearchModal: React.FC<SymbolSearchModalProps> = (props) => {
   const { theme } = useTheme();
   const isDarkTheme = theme === 'dark';
+
+  const [getStockDetails] = useLazyGetStockDetailsQuery();
+  const [addToWatchlist] = useAddToWatchlistMutation();
 
   const {
     visible,
@@ -109,21 +117,19 @@ const SymbolSearchModal: React.FC<SymbolSearchModalProps> = (props) => {
     }
 
     try {
-      // Send to backend with ticker and exchange
-      const response = await fetch('/api/watchlist/add', {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-        },
-        body: JSON.stringify({
-          ticker: record.symbol,
-          exchange: record.exchange,
-        }),
-      });
+      // First get stock details
+      const stockDetails = await getStockDetails({
+        ticker: record.symbol,
+        exchange: record.exchange
+      }).unwrap();
+      const stocksData = stockDetails.stocks;
 
-      if (!response.ok) {
-        throw new Error('Failed to add ticker to watchlist');
+      if (_.isEmpty(stocksData)) {
+        throw new Error('Failed to fetch stock details');
       }
+
+      // Then add to watchlist
+      await addToWatchlist(stocksData).unwrap();
 
       // Call the parent's onAddTicker function
       onAddTicker(symbolKey);
@@ -247,7 +253,6 @@ const SymbolSearchModal: React.FC<SymbolSearchModalProps> = (props) => {
       } }
       closable={false}
     >
-      {/* Search Input */}
       <div style={ { marginBottom: '16px' } }>
         <Input
           placeholder="Search symbols (e.g., AAPL, Tesla, etc.)..."
@@ -369,7 +374,6 @@ const SymbolSearchModal: React.FC<SymbolSearchModalProps> = (props) => {
         )}
       </div>
 
-      {/* Instructions */}
       <div style={{ 
         marginTop: '16px', 
         padding: '12px', 

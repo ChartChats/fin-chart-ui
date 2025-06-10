@@ -5,6 +5,12 @@ import ScreenerCard from "@/components/Screener/ScreenerCard";
 import { ScreenerDashboardProps } from "@/interfaces/screenerInterfaces";
 import _ from 'lodash';
 
+import { 
+  useGetWatchlistQuery, 
+  useAddToWatchlistMutation,
+  useRemoveFromWatchlistMutation 
+} from '@/store/index';
+
 const { Title } = Typography;
 
 const ScreenerDashboard = (props: ScreenerDashboardProps) => {
@@ -21,76 +27,50 @@ const ScreenerDashboard = (props: ScreenerDashboardProps) => {
     expandedScreeners 
   } = props;
 
-  const [watchlistData, setWatchlistData] = useState<any[]>([]);
+  // Get watchlist data and mutations
+  const { data: watchlist = {} } = useGetWatchlistQuery();
+  const [addToWatchlist] = useAddToWatchlistMutation();
+  const [removeFromWatchlist] = useRemoveFromWatchlistMutation();
 
-  useEffect(() => {
-    const savedWatchlist = localStorage.getItem('screener_watchlist');
-    if (savedWatchlist) {
-      try {
-        setWatchlistData(JSON.parse(savedWatchlist));
-      } catch (error) {
-        console.error('Error loading watchlist:', error);
-      }
-    }
-  }, []);
-
-  useEffect(() => {
-    if (watchlistData.length > 0) {
-      localStorage.setItem('screener_watchlist', JSON.stringify(watchlistData));
-    } else {
-      localStorage.removeItem('screener_watchlist');
-    }
-  }, [watchlistData]);
-
-  const handleAddToWatchlist = (selectedRows: any[]) => {
-    const newItems = selectedRows.filter(newItem => {
-      const identifier = newItem.symbol || newItem.key;
-      return !watchlistData.some(existingItem => 
-        (existingItem.symbol || existingItem.key) === identifier
-      );
-    });
-
-    if (newItems.length > 0) {
-      setWatchlistData(prev => [...prev, ...newItems]);
+  const handleAddToWatchlist = async (selectedRows: any[]) => {
+    try {
+      await addToWatchlist(selectedRows).unwrap();
+      // Removed refetch() - RTK Query will automatically update the cache
+    } catch (error) {
+      console.error('Failed to add to watchlist:', error);
     }
   };
 
   const handleAddTicker = (tickerSymbol: string) => {
-    const exists = watchlistData.some(item => 
-      (item.symbol || '').toUpperCase() === tickerSymbol.toUpperCase()
-    );
-
-    if (exists) return;
-
-    const newTicker = {
-      key: `ticker-${Date.now()}`,
-      symbol: tickerSymbol,
-      close: 0,
-      open: 0,
-      price_change_1d_percent: 0,
-      added_at: new Date().toISOString(),
-    };
-
-    setWatchlistData(prev => [...prev, newTicker]);
+    // This function is called from WatchlistTable after the ticker is added
+    // The actual API call is handled by SymbolSearchModal
+    // No need to make API call here as it's already done in the modal
+    console.log('Ticker added:', tickerSymbol);
   };
 
-  const handleRemoveFromWatchlist = (keys: string[]) => {
-    const filteredWatchlistData = _.filter(watchlistData, (item) => _.indexOf(keys, item.key) !== 0)
-    setWatchlistData(filteredWatchlistData);
+  const handleRemoveFromWatchlist = async (keys: string[]) => {
+    try {
+      await removeFromWatchlist(keys).unwrap();
+      // Removed refetch() - RTK Query will automatically update the cache
+    } catch (error) {
+      console.error('Failed to remove from watchlist:', error);
+    }
   };
 
   const isScreenerExpanded = (screenerId: string) => {
     return expandedScreeners.includes(screenerId);
   };
 
+  const watchlistSymbolsData = _.values(watchlist);
+
   return (
     <div style={{ padding: '16px' }}>
-      {watchlistData.length > 0 && (
+      {watchlist && watchlistSymbolsData.length > 0 && (
         <>
           <WatchlistTable
-            watchlistData={watchlistData}
+            watchlistData={watchlistSymbolsData}
             onAddTicker={handleAddTicker}
-            onRemoveFromWatchlist={ handleRemoveFromWatchlist }
+            onRemoveFromWatchlist={handleRemoveFromWatchlist}
             isDarkTheme={isDarkTheme}
             columns={columns}
           />

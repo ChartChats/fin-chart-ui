@@ -1,5 +1,4 @@
 import React, { useState, useEffect, useRef } from 'react';
-
 import { 
   Table, 
   Button, 
@@ -29,18 +28,29 @@ const WatchlistTable = (props: WatchlistTableProps) => {
 
   const [selectedRowKeys, setSelectedRowKeys] = useState<string[]>([]);
   const [dataSource, setDataSource] = useState(watchlistData);
-  
-  // Modal state
   const [isModalVisible, setIsModalVisible] = useState(false);
   
   const tableRef = useRef<HTMLDivElement>(null);
   const sortableRef = useRef<Sortable | null>(null);
   const tableBodyRef = useRef<HTMLElement | null>(null);
 
-  // Only update dataSource if watchlistData truly changes
+  // Helper function to generate key from symbol and exchange
+  const generateRowKey = (symbol: string, exchange: string) => {
+    return `${symbol}-${exchange}`;
+  };
+
+  // Transform data to use symbol-exchange as key
+  const transformedData = watchlistData.map(item => ({
+    ...item,
+    key: generateRowKey(item.symbol || item.ticker, item.exchange || 'UNKNOWN')
+  }));
+
+  // Update dataSource when watchlistData changes
   useEffect(() => {
-    setDataSource(watchlistData);
-  }, [watchlistData.map(d => d.key).join(',')]); // Avoid unnecessary re-renders
+    setDataSource(transformedData);
+    // Clear selected rows when data changes to avoid stale selections
+    setSelectedRowKeys([]);
+  }, [watchlistData]);
 
   useEffect(() => {
     if (tableRef.current && !sortableRef.current) {
@@ -87,7 +97,10 @@ const WatchlistTable = (props: WatchlistTableProps) => {
   };
 
   const handleTickerAdded = (ticker: string) => {
-    onAddTicker(ticker);
+    // The SymbolSearchModal has already made the API call to add the ticker
+    // Just notify parent component and close modal
+    onAddTicker(ticker); // This is just for notification/logging
+    setIsModalVisible(false); // Close modal after adding ticker
   };
 
   const onSelectChange = (newSelectedRowKeys: string[]) => {
@@ -102,6 +115,7 @@ const WatchlistTable = (props: WatchlistTableProps) => {
   };
 
   const handleBulkDelete = () => {
+    // The selectedRowKeys now contain symbol-exchange combinations
     onRemoveFromWatchlist(selectedRowKeys);
     setSelectedRowKeys([]);
   };
@@ -170,21 +184,15 @@ const WatchlistTable = (props: WatchlistTableProps) => {
             {
               hasSelected &&
               <span style={{ marginLeft: 8, fontSize: '16px' }}>
-                <Popconfirm
-                  title={ `Delete ${selectedRowKeys.length} items?` }
-                  onConfirm={handleBulkDelete}
-                  okText="Yes"
-                  cancelText="No"
+                <Button
+                  type="link"
+                  danger
+                  icon={<DeleteOutlined />}
+                  size="small"
+                  onClick={ handleBulkDelete }
                 >
-                  <Button
-                    type="link"
-                    danger
-                    icon={<DeleteOutlined />}
-                    size="small"
-                  >
-                    Delete {selectedRowKeys.length} items
-                  </Button>
-                </Popconfirm>
+                  Delete {selectedRowKeys.length} items
+                </Button>
               </span>
             }
           </Text>
@@ -213,7 +221,7 @@ const WatchlistTable = (props: WatchlistTableProps) => {
             flex: 1,
             overflow: 'hidden'
           }}
-          rowKey="key"
+          rowKey="key" // This will now use the symbol-exchange combination
           rowSelection={rowSelection}
         />
       </div>

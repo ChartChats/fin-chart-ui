@@ -52,3 +52,15 @@ export interface SymbolSearchResult {
   instrument_type: string;
   key?: string;
 }
+
+export interface ScreenerTickerProps {
+  ticker: string;
+  exchange: string;
+  low: number;
+  high: number;
+  open: number;
+  close: number;
+  volume: number;
+  rsi: number;
+  macd: number;
+}
