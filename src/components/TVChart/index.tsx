@@ -4,7 +4,6 @@ import _ from 'lodash';
 import { generateSymbol } from './helpers';
 import Datafeed from './datafeed';
 import './index.css';
-import defaultChart from '../../mock/defaultChart.json';
 
 import {
   getShapeMap,
@@ -70,9 +69,9 @@ export const TVChartContainer: React.FC<TVChartProps> = (props: DefaultChartProp
     autosize: true,
     studiesOverrides: {},
     theme: props.theme,
-    symbol_type: defaultChart.type,
-    description: defaultChart.description,
-    exchange: defaultChart.exchange
+    symbol_type: props.type,
+    description: props.description,
+    exchange: props.exchange
   }), [props.symbol, props.interval, props.theme]);
 
   // Function to update visible range

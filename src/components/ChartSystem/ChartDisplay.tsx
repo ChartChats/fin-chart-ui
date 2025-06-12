@@ -21,9 +21,10 @@ export const ChartDisplay = React.memo(({ chartId }: ChartDisplayProps) => {
       <div className="flex-1 min-h-0 chart-container">
         <TVChartContainer
           symbol={chart.symbol}
+          exchange={chart.exchange}
           interval={chart.timeframe || '1D'}
-          indicators={chart.indicators}
-          chartPatterns={chart.chart_pattern}
+          indicators={chart.indicators || []}
+          chartPatterns={chart.chart_pattern || []}
           theme={themeValue}
           date_from={chart.date_from || ''}
           date_to={chart.date_to || ''}

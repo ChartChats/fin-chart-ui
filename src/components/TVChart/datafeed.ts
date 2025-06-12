@@ -56,7 +56,10 @@ export default class Datafeed {
     setTimeout(() => onResultReadyCallback(newSymbols), 0);
   };
 
-  resolveSymbol = async (symbolName: string, onSymbolResolvedCallback: (symbolInfo: SymbolInfo) => void, onResolveErrorCallback: (error: string) => void, extension: any
+  resolveSymbol = async (
+    symbolName: string,
+    onSymbolResolvedCallback: (symbolInfo: SymbolInfo) => void,
+    onResolveErrorCallback: (error: string) => void, extension: any
   ): Promise<void> => {
     console.log('[resolveSymbol]: Method call', symbolName);
 
@@ -68,7 +71,10 @@ export default class Datafeed {
         throw new Error('Invalid symbol format');
       }
 
-      const { exchange, symbol } = parsedSymbol;
+      const {
+        exchange = 'NASDAQ',
+        symbol = 'APPL'
+      } = parsedSymbol;
       
       // Now get the details of the parsed symbol from the API
       const symbolsResponse = await makeApiRequest('stock-search', {
@@ -79,25 +85,39 @@ export default class Datafeed {
         throw new Error('No data received from API');
       }
 
-      const symbolDetails = _.find(symbolsResponse.data, (item: any) => 
+      let symbolDetails = _.find(symbolsResponse.data, (item: any) => 
         item.exchange === exchange && item.symbol === symbol
       );
 
       console.log('[resolveSymbol]: Symbol details', symbolDetails);
 
-      if (!symbolDetails) {
-        throw new Error(`Symbol ${exchange}:${symbol} not found`);
+      if (_.isEmpty(symbolDetails)) {
+        if (symbolsResponse && _.size(symbolsResponse.data) > 0) {
+          symbolDetails = _.head(symbolsResponse.data);
+        } else {
+          throw new Error(`Symbol ${exchange}:${symbol} not found`);
+        }
       }
+
+      const {
+        symbol: selectedSymbol = '',
+        instrument_name: selectedDescription = '',
+        exchange: selectedExchange = '',
+        instrument_type: selectedType = '',
+        currency_code: currencyCode = '',
+        exchange_timezone: selectedTimezone = 'Etc/UTC',
+        country: countryName = ''
+      } = symbolDetails;
     
       // Symbol information object
       const symbolInfo: SymbolInfo = {
-        ticker: symbol,
-        name: `${exchange}:${symbol}`,
-        description: symbolDetails.instrument_name || `${exchange}:${symbol}`,
-        type: symbolDetails.instrument_type || 'crypto',
+        ticker: selectedSymbol,
+        name: `${selectedExchange}:${selectedSymbol}`,
+        description: selectedDescription || `${exchange}:${symbol}`,
+        type: selectedType || 'crypto',
         session: '24x7',
-        timezone: 'Etc/UTC',
-        exchange: exchange,
+        timezone: selectedTimezone || 'Etc/UTC',
+        exchange: selectedExchange,
         interval: this.props.interval,
         minmov: 1,
         pricescale: 100,

@@ -20,7 +20,6 @@ const { Text } = Typography;
 const WatchlistTable = (props: WatchlistTableProps) => {
   const {
     watchlistData,
-    onAddTicker,
     onRemoveFromWatchlist,
     isDarkTheme,
     columns
@@ -99,7 +98,6 @@ const WatchlistTable = (props: WatchlistTableProps) => {
   const handleTickerAdded = (ticker: string) => {
     // The SymbolSearchModal has already made the API call to add the ticker
     // Just notify parent component and close modal
-    onAddTicker(ticker); // This is just for notification/logging
     setIsModalVisible(false); // Close modal after adding ticker
   };
 

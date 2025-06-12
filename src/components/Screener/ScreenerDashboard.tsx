@@ -35,23 +35,14 @@ const ScreenerDashboard = (props: ScreenerDashboardProps) => {
   const handleAddToWatchlist = async (selectedRows: any[]) => {
     try {
       await addToWatchlist(selectedRows).unwrap();
-      // Removed refetch() - RTK Query will automatically update the cache
     } catch (error) {
       console.error('Failed to add to watchlist:', error);
     }
   };
 
-  const handleAddTicker = (tickerSymbol: string) => {
-    // This function is called from WatchlistTable after the ticker is added
-    // The actual API call is handled by SymbolSearchModal
-    // No need to make API call here as it's already done in the modal
-    console.log('Ticker added:', tickerSymbol);
-  };
-
   const handleRemoveFromWatchlist = async (keys: string[]) => {
     try {
       await removeFromWatchlist(keys).unwrap();
-      // Removed refetch() - RTK Query will automatically update the cache
     } catch (error) {
       console.error('Failed to remove from watchlist:', error);
     }
@@ -68,7 +59,6 @@ const ScreenerDashboard = (props: ScreenerDashboardProps) => {
       <>
         <WatchlistTable
           watchlistData={watchlistSymbolsData}
-          onAddTicker={handleAddTicker}
           onRemoveFromWatchlist={handleRemoveFromWatchlist}
           isDarkTheme={isDarkTheme}
           columns={columns}

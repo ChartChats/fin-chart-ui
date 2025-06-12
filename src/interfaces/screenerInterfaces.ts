@@ -23,7 +23,6 @@ export interface FieldConfig {
 
 export interface WatchlistTableProps {
   watchlistData: any[];
-  onAddTicker: (ticker: string) => void;
   onRemoveFromWatchlist: (keys: string[]) => void;
   isDarkTheme: boolean;
   columns: any[];

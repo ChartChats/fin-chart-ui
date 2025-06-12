@@ -19,6 +19,7 @@ export interface ChartPatternProps {
 export interface TVChartProps {
   symbol?: string;
   interval?: string;
+  exchange?: string;
   theme?: string;
   indicators?: IndicatorProps[];
   chartPatterns?: ChartPatternProps[];
