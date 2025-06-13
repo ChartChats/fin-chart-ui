@@ -35,7 +35,7 @@ export function MainLayout() {
     };
   });
 
-  const handleSectionToggle = (section: 'screener' | 'charts' | 'chat') => {
+  const handleSectionToggle = useCallback((section: 'screener' | 'charts' | 'chat') => {
     setVisibleSections(prev => {
       const newState = {
         ...prev,
@@ -44,7 +44,7 @@ export function MainLayout() {
       localStorage.setItem('visibleSections', JSON.stringify(newState));
       return newState;
     });
-  };
+  }, []);
 
   const activeSection = useMemo(() => {
     if (visibleSections.screener) return 'screener';
@@ -107,9 +107,8 @@ export function MainLayout() {
 
   const borderColor = isDarkTheme ? '#3f3f46' : '#e5e7eb';
   const bgColor = isDarkTheme ? '#1A1F2C' : '#ffffff';
-  const headerBgColor = isDarkTheme ? '#333333' : '#f3f3f3';
 
-  const handleMouseDown = (e: React.MouseEvent, section: 'screener' | 'charts' | 'chat', side: 'left' | 'right') => {
+  const handleMouseDown = useCallback((e: React.MouseEvent, section: 'screener' | 'charts' | 'chat', side: 'left' | 'right') => {
     e.preventDefault();
     if (!containerRef.current) return;
 
@@ -124,22 +123,22 @@ export function MainLayout() {
       },
       activeHandle: { section, side }
     });
-  };
+  }, [screenerWidth, chatWidth]);
 
+  // Use refs to track current widths for resize operations
   const widthsRef = useRef({
     screener: 240,
     chat: 320
   });
 
-  const setScreenerWidthWithRef = useCallback((width: number) => {
-    widthsRef.current.screener = width;
-    setScreenerWidth(width);
-  }, []);
+  // Update refs when state changes (no circular dependency)
+  useEffect(() => {
+    widthsRef.current.screener = screenerWidth;
+  }, [screenerWidth]);
 
-  const setChatWidthWithRef = useCallback((width: number) => {
-    widthsRef.current.chat = width;
-    setChatWidth(width);
-  }, []);
+  useEffect(() => {
+    widthsRef.current.chat = chatWidth;
+  }, [chatWidth]);
 
   const handleMouseMove = useCallback((e: MouseEvent) => {
     if (!resizeState.isResizing || !containerRef.current || !resizeState.activeHandle) return;
@@ -167,11 +166,11 @@ export function MainLayout() {
         
         // If we have enough space for other sections (or only one other section)
         if (remainingSpace >= (visibleSectionsList.length > 2 ? minWidth * 2 : minWidth)) {
-          setScreenerWidthWithRef(newWidth);
+          setScreenerWidth(newWidth);
           // If only two sections are visible, adjust the other section accordingly
           if (visibleSectionsList.length === 2) {
             if (visibleSections.chat) {
-              setChatWidthWithRef(remainingSpace);
+              setChatWidth(remainingSpace);
             }
           }
         }
@@ -181,12 +180,12 @@ export function MainLayout() {
         if (side === 'left') {
           const newScreenerWidth = Math.max(resizeState.initialWidths.screener + adjustedDelta, minWidth);
           if (containerWidth - newScreenerWidth >= minWidth) {
-            setScreenerWidthWithRef(newScreenerWidth);
+            setScreenerWidth(newScreenerWidth);
           }
         } else {
           const newChatWidth = Math.max(resizeState.initialWidths.chat - adjustedDelta, minWidth);
           if (containerWidth - newChatWidth - widthsRef.current.screener >= minWidth) {
-            setChatWidthWithRef(newChatWidth);
+            setChatWidth(newChatWidth);
           }
         }
         break;
@@ -196,27 +195,18 @@ export function MainLayout() {
         const remainingSpace = containerWidth - newWidth;
 
         if (remainingSpace >= (visibleSectionsList.length > 2 ? minWidth * 2 : minWidth)) {
-          setChatWidthWithRef(newWidth);
+          setChatWidth(newWidth);
           // If only two sections are visible, adjust the other section accordingly
           if (visibleSectionsList.length === 2) {
             if (visibleSections.screener) {
-              setScreenerWidthWithRef(remainingSpace);
+              setScreenerWidth(remainingSpace);
             }
           }
         }
         break;
       }
     }
-  }, [resizeState, setScreenerWidthWithRef, setChatWidthWithRef, visibleSections]);
-
-  // Update ref when state changes
-  useEffect(() => {
-    widthsRef.current.screener = screenerWidth;
-  }, [screenerWidth]);
-
-  useEffect(() => {
-    widthsRef.current.chat = chatWidth;
-  }, [chatWidth]);
+  }, [resizeState, visibleSections]);
 
   const handleMouseUp = useCallback(() => {
     setResizeState(prev => ({
@@ -227,6 +217,7 @@ export function MainLayout() {
     document.body.classList.remove('resizing');
   }, []);
 
+  // Handle mouse events for resizing
   useEffect(() => {
     if (resizeState.isResizing) {
       window.addEventListener('mousemove', handleMouseMove);
@@ -242,58 +233,38 @@ export function MainLayout() {
     };
   }, [resizeState.isResizing, handleMouseMove, handleMouseUp]);
 
-  const previousWidthsRef = useRef<{
-    container: number;
-    screener: number;
-    chat: number;
-  }>({ container: 0, screener: screenerWidth, chat: chatWidth });
-
-  // Calculate the middle section width
+  // Calculate charts width based on container and other sections
+  // This effect runs when container size or section widths change
   useEffect(() => {
-    if (containerRef.current) {
+    if (containerRef.current && visibleSections.charts) {
       const containerWidth = containerRef.current.offsetWidth;
-      const newChartsWidth = containerWidth - screenerWidth - chatWidth;
+      const screenerWidthValue = visibleSections.screener ? screenerWidth : 0;
+      const chatWidthValue = visibleSections.chat ? chatWidth : 0;
+      const newChartsWidth = Math.max(containerWidth - screenerWidthValue - chatWidthValue, 200);
       
-      // Only update if there's been a meaningful change in any of the measurements
-      if (
-        Math.abs(previousWidthsRef.current.container - containerWidth) > 1 ||
-        Math.abs(previousWidthsRef.current.screener - screenerWidth) > 1 ||
-        Math.abs(previousWidthsRef.current.chat - chatWidth) > 1
-      ) {
-        setChartsWidth(newChartsWidth);
-        previousWidthsRef.current = {
-          container: containerWidth,
-          screener: screenerWidth,
-          chat: chatWidth
-        };
-      }
+      // Only update if there's a meaningful change
+      setChartsWidth(prevChartsWidth => {
+        if (Math.abs(prevChartsWidth - newChartsWidth) > 1) {
+          return newChartsWidth;
+        }
+        return prevChartsWidth;
+      });
+    } else if (!visibleSections.charts) {
+      setChartsWidth(0);
     }
-  }, [screenerWidth, chatWidth]); // Remove chartsWidth from dependencies
+  }, [screenerWidth, chatWidth, visibleSections.screener, visibleSections.charts, visibleSections.chat]);
 
-  const ResizeHandle = ({ section, side }: { section: 'screener' | 'charts' | 'chat', side: 'left' | 'right' }) => (
-    <div
-      className="absolute top-0 bottom-0 w-1 hover:bg-blue-400/50 cursor-col-resize transition-colors z-10"
-      style={{ 
-        left: side === 'left' ? 0 : undefined,
-        right: side === 'right' ? 0 : undefined,
-        backgroundColor: isDarkTheme ? 'rgba(45, 45, 45, 0.5)' : 'rgba(229, 231, 235, 0.5)'
-      }}
-      onMouseDown={(e) => handleMouseDown(e, section, side)}
-    />
-  );
-
-  // Update widths when container size or visibility changes
+  // Update widths when container size or visibility changes (initialization)
   useEffect(() => {
     if (containerRef.current) {
       const containerWidth = containerRef.current.offsetWidth;
       const baseWidths = calculateBaseWidths(containerWidth);
       
-      setScreenerWidth(baseWidths.screener);
-      setChatWidth(baseWidths.chat);
+      // Use functional updates to avoid dependency issues
+      setScreenerWidth(prev => Math.abs(prev - baseWidths.screener) > 1 ? baseWidths.screener : prev);
+      setChatWidth(prev => Math.abs(prev - baseWidths.chat) > 1 ? baseWidths.chat : prev);
       
-      // Charts width will be calculated based on remaining space
-      const remainingWidth = containerWidth - baseWidths.screener - baseWidths.chat;
-      setChartsWidth(visibleSections.charts ? Math.max(remainingWidth, 200) : 0);
+      // Charts width will be calculated by the separate effect above
     }
   }, [visibleSections, calculateBaseWidths]);
 
@@ -317,6 +288,19 @@ export function MainLayout() {
       window.removeEventListener('sectionVisibilityChanged', handleSectionVisibilityChange as EventListener);
     };
   }, []);
+
+  // Memoize the resize handle component to prevent unnecessary re-renders
+  const ResizeHandle = useMemo(() => ({ section, side }: { section: 'screener' | 'charts' | 'chat', side: 'left' | 'right' }) => (
+    <div
+      className="absolute top-0 bottom-0 w-1 hover:bg-blue-400/50 cursor-col-resize transition-colors z-10"
+      style={{ 
+        left: side === 'left' ? 0 : undefined,
+        right: side === 'right' ? 0 : undefined,
+        backgroundColor: isDarkTheme ? 'rgba(45, 45, 45, 0.5)' : 'rgba(229, 231, 235, 0.5)'
+      }}
+      onMouseDown={(e) => handleMouseDown(e, section, side)}
+    />
+  ), [isDarkTheme, handleMouseDown]);
 
   if (isMobile) {
     return (

@@ -20,12 +20,23 @@ export const screenerApi = createApi({
   tagTypes: ['Screeners'],
   endpoints: (builder) => ({
 
-    getScreener: builder.query<ScreenerData, string>({
-      queryFn: async (screenerId, { dispatch }) => {
+    getScreener: builder.query<ScreenerData, any>({
+      queryFn: async ({screenerId, offset, limit, search, sort_field, sort_order, exchange_filter }, { dispatch }) => {
+        let queryString = `offset=${offset}&limit=${limit}`;
+        if (search) {
+          queryString += `&search=${search}`;
+        }
+        if (sort_field && sort_order) {
+          queryString += `&sort_field=${sort_field}&sort_order=${sort_order}`;
+        }
+        if (exchange_filter) {
+          queryString += `&exchange_filter=${exchange_filter}`;
+        }
+
         try {
-          const response = await axios.get(`/user/screeners/${screenerId}`);
+          const response = await axios.get(`/user/screeners/${screenerId}?${queryString}`);
           return {
-            data: response.data[screenerId]
+            data: response.data
           };
         } catch (error) {
           console.error('getScreener error:', error);
@@ -44,14 +55,8 @@ export const screenerApi = createApi({
       queryFn: async (_, { dispatch }) => {
         try {
           const response = await axios.get('/user/screeners');
-          if (!response.data.screeners) {
-            return { data: [] };
-          }
           return {
-            data: response.data.screeners.map(([id, screener]: [string, any]) => ({
-              id,
-              ...screener
-            }))
+            data: response.data.screeners
           };
         } catch (error) {
           return {

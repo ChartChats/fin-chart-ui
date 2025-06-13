@@ -54,3 +54,17 @@ export const getChats = (chatsData: [string, any[]][] = []): Chat[] => {
     }
   });
 };
+
+export const formatValue = (value, type) => {
+  if (value === '' || value === null || value === undefined) return '-';
+  switch (type) {
+    case 'currency': return `$${Number(value).toFixed(2)}`;
+    case 'percentage': return `${Number(value).toFixed(2)}%`;
+    case 'change': {
+      const change = Number(value).toFixed(2);
+      return Number(change) >= 0 ? `+${change}` : `${change}`;
+    }
+    case 'number': return Number(value).toFixed(2);
+    default: return value;
+  }
+};

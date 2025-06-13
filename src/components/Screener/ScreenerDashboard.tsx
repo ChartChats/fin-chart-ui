@@ -17,9 +17,6 @@ const ScreenerDashboard = (props: ScreenerDashboardProps) => {
   const { 
     screeners, 
     loadingStates,
-    columns,
-    fieldConfigMenu,
-    getTimeDifference,
     isDarkTheme,
     onRetry,
     onDelete,
@@ -61,7 +58,6 @@ const ScreenerDashboard = (props: ScreenerDashboardProps) => {
           watchlistData={watchlistSymbolsData}
           onRemoveFromWatchlist={handleRemoveFromWatchlist}
           isDarkTheme={isDarkTheme}
-          columns={columns}
         />
         <Divider
           style={{ 
@@ -83,22 +79,21 @@ const ScreenerDashboard = (props: ScreenerDashboardProps) => {
         </Title>
         
         <div style={{ display: 'flex', flexDirection: 'column', gap: '16px' }}>
-          {screeners.map((screener) => (
-            <ScreenerCard
-              key={screener.id}
-              screener={screener}
-              isExpanded={isScreenerExpanded(screener.id)}
-              onToggleExpand={onToggleExpand}
-              onRetry={onRetry}
-              onDelete={onDelete}
-              onAddToWatchlist={handleAddToWatchlist}
-              loadingStates={loadingStates}
-              columns={columns}
-              fieldConfigMenu={fieldConfigMenu}
-              getTimeDifference={getTimeDifference}
-              isDarkTheme={isDarkTheme}
-            />
-          ))}
+          {
+            screeners.map((screener) => (
+              <ScreenerCard
+                key={screener.id}
+                screener={screener}
+                isExpanded={isScreenerExpanded(screener.id)}
+                onToggleExpand={onToggleExpand}
+                onRetry={onRetry}
+                onDelete={onDelete}
+                onAddToWatchlist={handleAddToWatchlist}
+                loadingStates={loadingStates}
+                isDarkTheme={isDarkTheme}
+              />
+            ))
+          }
         </div>
       </div>
     </div>
