@@ -517,9 +517,11 @@ const ScreenerCard: React.FC<ScreenerCardProps> = (props) => {
                       Updated {getTimeDifference(screener)}
                     </span>
                     <Tag color="blue" style={{ fontSize: '11px', marginLeft: '8px' }}>
-                      {(isFetching && data.length === 0) || isInitialLoad
-                        ? 'Loading...'
-                        : `${getDisplayedCount()} / ${getCurrentTotal()} results`}
+                      {
+                        isFetching
+                          ? 'Loading...'
+                          : `${getDisplayedCount()} / ${getCurrentTotal()} results`
+                      }
                     </Tag>
                   </div>
                   <div>
