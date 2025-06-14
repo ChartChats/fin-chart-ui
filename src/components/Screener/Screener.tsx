@@ -4,7 +4,6 @@ import { useTheme } from "@/contexts/ThemeContext";
 import ScreenerDashboard from "@/components/Screener/ScreenerDashboard";
 
 import {
-  Checkbox,
   Modal
 } from 'antd';
 
@@ -12,10 +11,6 @@ import {
   useGetScreenersQuery,
   useRemoveScreenerMutation
 } from '@/store/apis/screenerApis';
-
-import {
-  availableCustomFields
-} from '@/utils/AppConstants';
 
 const Screener = () => {
   const { theme } = useTheme();

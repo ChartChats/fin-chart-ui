@@ -1,198 +1,120 @@
 import React, { useEffect, useState } from 'react';
-import _ from 'lodash';
-import { Tabs, Empty } from 'antd';
+import { Empty } from 'antd';
 import { useTheme } from '@/contexts/ThemeContext';
 import { ChatList } from './ChatList';
 import { ChatBox } from '../ChatBox/ChatBox';
-
-import {
-  useCreateChatMutation,
-  useDeleteChatMutation,
-  useGetChatsQuery,
-  useGetChartsQuery,
-} from '@/store/index';
+import { useGetChatsQuery } from '@/store/index';
 
 const ACTIVE_CHAT_ID_KEY = 'activeChatId';
 
-interface ChatWidgetProps {
-  chatId?: string;
-}
 interface ChatProps {
-  id?: string;
+  id: string;
   title?: string;
   createdAt?: string;
   messages?: any[];
 }
 
-
-
-const Chat = (props: ChatWidgetProps) => {
-
-  const [activeChatId, setActiveChatId] = useState<string | null>(
-    localStorage.getItem(ACTIVE_CHAT_ID_KEY)
-  );
+const Chat = () => {
   const { theme } = useTheme();
-
   const isDarkTheme = theme === 'dark';
   const borderColor = isDarkTheme ? '#3f3f46' : '#e5e7eb';
 
-  // Fetch the list of chats
+  // Fetch the list of chats (which correspond to charts)
   const {
-    data: chatsData = [],
-    refetch: refetchChats,
-    isSuccess: isChatsLoaded
-  } = useGetChatsQuery(undefined, { skip: false, refetchOnMountOrArgChange: true });
+    data: chats = [],
+    isSuccess: isChatsLoaded,
+    isLoading: isChatsLoading
+  } = useGetChatsQuery(undefined, { refetchOnMountOrArgChange: true });
 
-  const [createChat, { data: newChatData, isLoading: isCreating, isSuccess: isCreateSuccess }] = useCreateChatMutation();
-  const [deleteChat, { isSuccess: isDeleteSuccess }] = useDeleteChatMutation();
+  const [activeChatId, setActiveChatId] = useState<string | null>(null);
 
+  // Sync active chat with chart selection
+  useEffect(() => {
+    if (!isChatsLoaded) return;
 
-  // While switching chat want to set the new active chat id
-  const switchChat = (id: string) => {
-    setActiveChatId(id);
-    localStorage.setItem(ACTIVE_CHAT_ID_KEY, id);
-    // Dispatch event to sync with chart
-    window.dispatchEvent(new CustomEvent('chatSelected', { 
-      detail: { chatId: id } 
-    }));
-  };
+    const storedChatId = localStorage.getItem(ACTIVE_CHAT_ID_KEY);
+    const validStoredChat = storedChatId && chats.some(chat => chat.id === storedChatId);
+    
+    if (validStoredChat) {
+      setActiveChatId(storedChatId);
+    } else if (chats.length > 0) {
+      // Set to most recent chat
+      const mostRecentChat = chats[chats.length - 1];
+      setActiveChatId(mostRecentChat.id);
+      localStorage.setItem(ACTIVE_CHAT_ID_KEY, mostRecentChat.id);
+    } else {
+      // No chats available
+      setActiveChatId(null);
+      localStorage.removeItem(ACTIVE_CHAT_ID_KEY);
+    }
+  }, [isChatsLoaded, chats]);
 
-  // Listen for chart selection
+  // Handle chart selection and deletion events
   useEffect(() => {
     const handleChartSelected = (event: CustomEvent) => {
       const { chartId } = event.detail;
-      if (chartId && chatsData.some((chat: ChatProps) => chat.id === chartId)) {
-        switchChat(chartId);
+      if (chartId && chats.some(chat => chat.id === chartId)) {
+        setActiveChatId(chartId);
+        localStorage.setItem(ACTIVE_CHAT_ID_KEY, chartId);
       }
     };
 
-    window.addEventListener('chartSelected', handleChartSelected as EventListener);
-    return () => {
-      window.removeEventListener('chartSelected', handleChartSelected as EventListener);
-    };
-  }, [chatsData]);
-
-  // Effect to initialize chat when chats data is loaded
-  useEffect(() => {
-    if (!isChatsLoaded || !chatsData) return;
-    
-    const chats = Array.isArray(chatsData) ? chatsData : [];
-    
-    if (_.size(chats) > 0) {
-      // Check if the stored activeChatId exists in the chats
-      const storedChatId = localStorage.getItem(ACTIVE_CHAT_ID_KEY);
-      const storedChatExists = storedChatId && chats.some(chat => chat.id === storedChatId);
-      
-      if (storedChatExists) {
-        // If stored chat exists, use it
-        switchChat(storedChatId!);
-      } else if (!activeChatId) {
-        // If no active chat and no valid stored chat, use the most recent one
-        const mostRecentChat = chats[chats.length - 1];
-        switchChat(mostRecentChat.id);
-      }
-    } else if (!isCreating && !isCreateSuccess) {
-      // Only create a new chat if:
-      // 1. There are no chats
-      // 2. We're not already creating one
-      // 3. We haven't already successfully created one
-      createChat();
-    }
-  }, [chatsData, isChatsLoaded, isCreating, isCreateSuccess]);
-  
-
-  // Effect to update when new chat is created
-  useEffect(() => {
-    if (newChatData && newChatData.id) {
-      switchChat(newChatData.id);
-      refetchChats();
-    }
-  }, [newChatData]);
-  
-  // Effect to handle chat deletion
-  useEffect(() => {
-    if (isDeleteSuccess) {
-      refetchChats();
-      
-      // If the active chat was deleted, select another one
-      if (activeChatId && !chatsData.some((chat: ChatProps) => chat.id === activeChatId)) {
-        if (chatsData.length > 0) {
-          const chatIndex = _.findIndex(chatsData, (chat: ChatProps) => chat.id === activeChatId);
-          const newChatIndex = chatIndex > 0 ? chatIndex - 1 : 0;
-          switchChat(chatsData[newChatIndex].id as string);
+    const handleChartDeleted = (event: CustomEvent) => {
+      const { chartId } = event.detail;
+      if (chartId === activeChatId) {
+        // Find next available chat
+        const nextChat = chats.find(chat => chat.id !== chartId);
+        if (nextChat) {
+          setActiveChatId(nextChat.id);
+          localStorage.setItem(ACTIVE_CHAT_ID_KEY, nextChat.id);
         } else {
           setActiveChatId(null);
           localStorage.removeItem(ACTIVE_CHAT_ID_KEY);
         }
       }
-    }
-  }, [isDeleteSuccess]);
+    };
 
+    window.addEventListener('chartSelected', handleChartSelected as EventListener);
+    window.addEventListener('chartDeleted', handleChartDeleted as EventListener);
+    
+    return () => {
+      window.removeEventListener('chartSelected', handleChartSelected as EventListener);
+      window.removeEventListener('chartDeleted', handleChartDeleted as EventListener);
+    };
+  }, [chats, activeChatId]);
+
+  if (isChatsLoading) {
+    return (
+      <div className="flex flex-col h-full items-center justify-center">
+        <Empty description="Loading chats..." />
+      </div>
+    );
+  }
 
   return (
     <div className="flex flex-col h-full">
-      <Tabs
-        type="editable-card"
-        activeKey={ activeChatId || undefined }
-        onChange={ id => switchChat(id) }
-        onEdit={ (targetKey, action) => {
-          if (action === 'add') createChat();
-          if (action === 'remove' && typeof targetKey === 'string') {
-            deleteChat(targetKey);
-            // If we're deleting the active chat, handle it in the effect
-            if (targetKey === activeChatId) {
-              // Find another chat to switch to
-              const remainingChats = chatsData.filter((chat: ChatProps) => chat.id !== targetKey);
-              if (remainingChats.length > 0) {
-                switchChat(remainingChats[0].id as string);
-              } else {
-                setActiveChatId(null);
-                localStorage.removeItem(ACTIVE_CHAT_ID_KEY);
-              }
-            }
-          }
-        } }
-        items={
-          _.map(chatsData, (chat: ChatProps) => {
-            return {
-              key: chat.id,
-              label: (
-                <span className="truncate max-w-[100px] inline-block">
-                  { chat.title || `Chat ${chat.id?.substring(0, 8)}` }
-                </span>
-              ),
-            };
-          })
-        }
-        className="px-2 pt-2 custom-tabs"
-        style={ {
-          marginBottom: 0,
-          borderBottom: `1px solid ${borderColor}`
-        } }
-        tabBarStyle={ {
-          borderRadius: 8,
-          marginBottom: 0,
-        } }
-      />
       <div className="flex-1 flex flex-col min-h-0">
-        {
-          activeChatId ? (
-            <>
-              <div className="flex-1 overflow-y-auto">
-                <ChatList chatId={ activeChatId } />
-              </div>
-              <div
-                className="flex-shrink-0 p-4 border-t"
-                style={ { borderColor } } >
-                <ChatBox chatId={activeChatId || undefined} />
-              </div>
-            </>
-          ) : (
-            <div className="h-full flex items-center justify-center">
-              <Empty description="No chat selected" />
+        {activeChatId ? (
+          <>
+            <div className="flex-1 overflow-y-auto">
+              <ChatList chatId={activeChatId} />
             </div>
-          )
-        }
+            <div className="flex-shrink-0 p-4 border-t" style={{ borderColor }}>
+              <ChatBox chatId={activeChatId} />
+            </div>
+          </>
+        ) : (
+          <div className="h-full flex items-center justify-center">
+            <Empty 
+              description={
+                <span className="text-muted-foreground">
+                  No active chat available. Create a new chat to start a conversation.
+                </span>
+              }
+              image={Empty.PRESENTED_IMAGE_SIMPLE}
+            />
+          </div>
+        )}
       </div>
     </div>
   );

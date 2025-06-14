@@ -96,8 +96,7 @@ export const chatsApi = createApi({
     }),
 
     createChat: builder.mutation<Chat, void>({
-      queryFn: async (_, { dispatch }) => {
-        const chatId = uuidv4();
+      queryFn: async (chatId, { dispatch }) => {
         try {
           const response = await axios.post(`/user/chats/${chatId}`, {
             messages: []
