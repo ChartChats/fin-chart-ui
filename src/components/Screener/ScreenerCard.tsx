@@ -636,7 +636,7 @@ const ScreenerCard: React.FC<ScreenerCardProps> = (props) => {
                   placeholder="Filter by Exchange"
                   value={exchangeFilter}
                   onChange={handleExchangeFilterChange}
-                  style={{ minWidth: 200 }}
+                  style={{ minWidth: '20%' }}
                   allowClear
                   showSearch
                   filterOption={(input, option) => {

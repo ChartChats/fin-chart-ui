@@ -1,5 +1,6 @@
 import _ from 'lodash';
 import moment from 'moment';
+import { chartApi } from '@/store/apis/chartApis';
 
 import {
   makeApiRequest,
@@ -14,6 +15,7 @@ import {
   PeriodParams,
   NewSymbol,
   SymbolItem,
+  ChartData
 } from '@/interfaces/chartInterfaces.js';
 
 import { subscribeOnStream, unsubscribeFromStream } from './streaming.js';
@@ -129,6 +131,26 @@ export default class Datafeed {
         visible_plots_set: 'ohlc',
         data_status: 'streaming'
       };
+
+      // After fixing on the symbolInfo, we need to change the details of the chart from the LLM too
+      // Sometimes, the LLM fails to recognize the exchange / description / ticker
+      // But based on the symbol, we provide them the best possible solution from symbol_search endpoint
+      if (this.props.dispatch) {
+        const chartData: Partial<ChartData> = {
+          id: this.props.chartId,
+          type: selectedType || 'crypto',
+          title: selectedDescription || `${selectedExchange}:${selectedSymbol}`,
+          symbol: selectedSymbol,
+          timeframe: this.props.interval,
+          exchange: selectedExchange,
+          description: selectedDescription || `${exchange}:${symbol}`,
+        };
+
+        this.props.dispatch(chartApi.endpoints.updateChart.initiate({
+          id: this.props.chartId,
+          data: chartData
+        }));
+      }
 
       console.log('[resolveSymbol]: Symbol resolved', symbolInfo);
       setTimeout(() => onSymbolResolvedCallback(symbolInfo), 0);

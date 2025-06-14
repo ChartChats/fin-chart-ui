@@ -20,6 +20,7 @@ export const ChartDisplay = React.memo(({ chartId }: ChartDisplayProps) => {
     <div className="w-full h-full flex flex-col">
       <div className="flex-1 min-h-0 chart-container">
         <TVChartContainer
+          chartId={chartId}
           symbol={chart.symbol}
           exchange={chart.exchange}
           interval={chart.timeframe || '1D'}

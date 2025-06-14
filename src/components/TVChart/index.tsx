@@ -1,6 +1,7 @@
 import React, { useEffect, useRef, useMemo } from 'react';
 import moment from 'moment';
 import _ from 'lodash';
+import { useDispatch } from 'react-redux';
 import { generateSymbol } from './helpers';
 import Datafeed from './datafeed';
 import './index.css';
@@ -56,8 +57,10 @@ export const TVChartContainer: React.FC<TVChartProps> = (props: DefaultChartProp
   const chartContainerRef = useRef<HTMLDivElement>(null);
   const widgetRef = useRef<any>(null);
   const chartReadyRef = useRef<boolean>(false);
+  const dispatch = useDispatch();
 
   const defaultProps = useMemo(() => ({
+    chartId: props.chartId,
     symbol: props.symbol,
     interval: props.interval,
     libraryPath: '/charting_library/',
@@ -208,14 +211,16 @@ export const TVChartContainer: React.FC<TVChartProps> = (props: DefaultChartProp
     if (!chartContainerRef.current) return;
   
     const datafeed = new Datafeed({
+      chartId: defaultProps.chartId,
       description: defaultProps.description,
       symbol: defaultProps.symbol,
       interval: defaultProps.interval,
       symbol_type: defaultProps.symbol_type,
       theme: defaultProps.theme,
       exchange: defaultProps.exchange,
-      from_date: props.date_from, // Pass from_date from props
-      to_date: props.date_to     // Pass to_date from props
+      from_date: props.date_from,
+      to_date: props.date_to,
+      dispatch,
     });
   
     const widgetOptions = {
