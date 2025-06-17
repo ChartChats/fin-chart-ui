@@ -163,6 +163,20 @@ export default class Datafeed {
     }
   };
 
+  private deduplicateBars = (bars: Bar[]): Bar[] => {
+    // Use a Map to ensure unique timestamps
+    const uniqueBarsMap = new Map<number, Bar>();
+    
+    bars.forEach(bar => {
+      const normalizedTime = Math.floor(bar.time / 1000) * 1000; // Normalize to nearest second
+      if (!uniqueBarsMap.has(normalizedTime) || bar.time > uniqueBarsMap.get(normalizedTime)!.time) {
+        uniqueBarsMap.set(normalizedTime, { ...bar, time: normalizedTime });
+      }
+    });
+    
+    return Array.from(uniqueBarsMap.values()).sort((a, b) => a.time - b.time);
+  };
+
   getBars = async (
     symbolInfo: SymbolInfo,
     resolution: string,
@@ -196,28 +210,37 @@ export default class Datafeed {
   
     try {
       let storedBars = this.dataCache.get(cacheKey) || [];
-      const cacheFirst = storedBars[0]?.time;
-      const cacheLast = storedBars[storedBars.length - 1]?.time;
+      
+      // Ensure stored bars are deduplicated and sorted
+      if (storedBars.length > 0) {
+        storedBars = this.deduplicateBars(storedBars);
+      }
 
-      // Determine required fetch direction
+      const cacheFirst = storedBars.length > 0 ? storedBars[0]?.time : null;
+      const cacheLast = storedBars.length > 0 ? storedBars[storedBars.length - 1]?.time : null;
+
+      // Determine if we need to fetch data
       const needsOlderData = firstDataRequest || (cacheFirst && fromMs < cacheFirst);
-      const needsNewerData = firstDataRequest || (cacheLast && toMs > cacheLast);
+      const needsNewerData = !firstDataRequest && (cacheLast && toMs > cacheLast);
 
-      if (needsOlderData || needsNewerData) {
-        console.log(`[getBars]: Fetching data for ${exchange}:${symbol}`);
+      if (needsOlderData || needsNewerData || storedBars.length === 0) {
+        console.log(`[getBars]: Fetching data for ${exchange}:${symbol}, needsOlder: ${needsOlderData}, needsNewer: ${needsNewerData}`);
 
         let startDate: Date, endDate: Date;
-        if (needsOlderData) {
-          endDate = cacheFirst ? new Date(cacheFirst) : new Date(toMs);
-          startDate = new Date(endDate);
+        
+        if (needsOlderData || storedBars.length === 0) {
+          // Fetch older data or initial data
+          endDate = cacheFirst ? new Date(cacheFirst - 1) : new Date(toMs); // Subtract 1ms to avoid overlap
           
           // Calculate backward period based on resolution
           const timeUnitMap: { [key: string]: { unit: moment.DurationInputArg2; value: number } } = {
             '1': { unit: 'minutes', value: BARS_LIMIT },
+            '3': { unit: 'minutes', value: BARS_LIMIT * 3 },
             '5': { unit: 'minutes', value: BARS_LIMIT * 5 },
             '15': { unit: 'minutes', value: BARS_LIMIT * 15 },
             '30': { unit: 'minutes', value: BARS_LIMIT * 30 },
             '60': { unit: 'hours', value: BARS_LIMIT },
+            '120': { unit: 'hours', value: BARS_LIMIT * 2 },
             'D': { unit: 'days', value: BARS_LIMIT },
             'W': { unit: 'weeks', value: BARS_LIMIT },
             'M': { unit: 'months', value: BARS_LIMIT }
@@ -225,11 +248,20 @@ export default class Datafeed {
 
           const { unit, value } = timeUnitMap[resolution] || { unit: 'days', value: BARS_LIMIT };
           startDate = moment(endDate).subtract(value, unit).toDate();
+          
+          // For initial request, use the requested date range if it's more restrictive
+          if (storedBars.length === 0) {
+            startDate = new Date(Math.max(startDate.getTime(), fromMs));
+            endDate = new Date(toMs);
+          }
         } else {
-          startDate = cacheLast ? new Date(cacheLast) : new Date(fromMs);
-          endDate = new Date(startDate);
+          // Fetch newer data
+          startDate = new Date(cacheLast + 1); // Add 1ms to avoid overlap
+          endDate = new Date(toMs);
         }
   
+        console.log(`[getBars]: API request from ${startDate.toISOString()} to ${endDate.toISOString()}`);
+
         const response = await makeApiRequest('time-series', {
           symbol: symbol,
           interval: interval,
@@ -239,45 +271,46 @@ export default class Datafeed {
         
         if (!response?.values?.length) {
           console.log('[getBars]: No data available from API');
-          onHistoryCallback([], { noData: true });
-          return;
-        }
-
-        const newBars = response.values.map((item: any) => ({
-          time: new Date(item.datetime).getTime(),
-          low: parseFloat(item.low),
-          high: parseFloat(item.high),
-          open: parseFloat(item.open),
-          close: parseFloat(item.close),
-          volume: parseFloat(item.volume || 0)
-        })).sort((a, b) => a.time - b.time);
-  
-        // Merge and deduplicate
-        const merged = [...storedBars, ...newBars].reduce((acc: Bar[], bar: Bar) => {
-          if (!acc.some(b => b.time === bar.time)) {
-            acc.push(bar);
+          if (storedBars.length === 0) {
+            onHistoryCallback([], { noData: true });
+            return;
           }
-          return acc;
-        }, []).sort((a, b) => a.time - b.time);
-  
-        this.dataCache.set(cacheKey, merged);
-        storedBars = merged;
+        } else {
+          const newBars = response.values.map((item: any) => ({
+            time: new Date(item.datetime).getTime(),
+            low: parseFloat(item.low),
+            high: parseFloat(item.high),
+            open: parseFloat(item.open),
+            close: parseFloat(item.close),
+            volume: parseFloat(item.volume || 0)
+          }));
+
+          // Combine and deduplicate all bars
+          const allBars = [...storedBars, ...newBars];
+          storedBars = this.deduplicateBars(allBars);
+          
+          // Update cache
+          this.dataCache.set(cacheKey, storedBars);
+          
+          console.log(`[getBars]: Merged data, total bars: ${storedBars.length}`);
+        }
       }
   
       // Filter to requested range
-      // When filtering visible bars, use the date range constraints
       const visibleBars = storedBars.filter(bar => 
         bar.time >= fromMs && bar.time <= toMs
       );
   
       // Calculate nextTime for pagination
-      const oldestTime = storedBars[0]?.time;
-      const newestTime = storedBars[storedBars.length - 1]?.time;
+      const oldestTime = storedBars.length > 0 ? storedBars[0]?.time : null;
+      const newestTime = storedBars.length > 0 ? storedBars[storedBars.length - 1]?.time : null;
       const hasOlderData = oldestTime && oldestTime < fromMs;
-  
+      
+      console.log(`[getBars]: Returning ${visibleBars.length} bars, hasOlderData: ${hasOlderData}`);
+
       onHistoryCallback(visibleBars, {
         noData: visibleBars.length === 0,
-        nextTime: hasOlderData ? oldestTime : newestTime,
+        nextTime: hasOlderData ? Math.floor(oldestTime! / 1000) : (newestTime ? Math.floor(newestTime / 1000) : undefined),
       });
   
     } catch (err) {
