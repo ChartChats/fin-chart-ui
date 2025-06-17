@@ -31,3 +31,5 @@ export const availableCustomFields = [
 ];
 
 export const defaultSelectedCustomFields = ['Volume', 'RSI'];
+
+export const SCREENER_TABLE_PAGINATIONLIMIT = 20;

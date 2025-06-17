@@ -1,6 +1,7 @@
 import React, { useEffect, useRef, useMemo } from 'react';
 import moment from 'moment';
 import _ from 'lodash';
+import { useDispatch } from 'react-redux';
 import { generateSymbol } from './helpers';
 import Datafeed from './datafeed';
 import './index.css';
@@ -8,7 +9,9 @@ import './index.css';
 import {
   getShapeMap,
   getChartPatternFunction,
-  colorMap
+  getPoints,
+  colorMap,
+  getPatternShape
 } from '@/utils/AppUtils';
 
 import {
@@ -42,22 +45,18 @@ const getIndicatorInputs = (tvWidget: any, indicatorName: string) => {
   return indicatorProps;
 };
 
-// Helper function to ensure timestamp is in seconds for TradingView
-const normalizeTimestamp = (timestamp: number): number => {
-  // If timestamp is in milliseconds (13 digits), convert to seconds
-  if (timestamp.toString().length === 13) {
-    return Math.floor(timestamp / 1000);
-  }
-  // If already in seconds (10 digits), return as is
-  return Math.floor(timestamp);
-};
-
 export const TVChartContainer: React.FC<TVChartProps> = (props: DefaultChartProps) => {
   const chartContainerRef = useRef<HTMLDivElement>(null);
   const widgetRef = useRef<any>(null);
   const chartReadyRef = useRef<boolean>(false);
+  const dataLoadedRef = useRef<boolean>(false);
+  const visibleRangeSetRef = useRef<boolean>(false);
+  const patternsAppliedRef = useRef<boolean>(false); // Track if patterns have been applied
+  const actualChartIdRef = useRef(props.chartId);
+  const dispatch = useDispatch();
 
   const defaultProps = useMemo(() => ({
+    chartId: props.chartId,
     symbol: props.symbol,
     interval: props.interval,
     libraryPath: '/charting_library/',
@@ -71,13 +70,16 @@ export const TVChartContainer: React.FC<TVChartProps> = (props: DefaultChartProp
     theme: props.theme,
     symbol_type: props.type,
     description: props.description,
-    exchange: props.exchange
-  }), [props.symbol, props.interval, props.theme]);
+    exchange: props.exchange,
+  }), [props.symbol, props.interval, props.theme, props.type, props.description, props.exchange, props.chartId]);
 
-  // Function to update visible range
-  const updateVisibleRange = () => {
-    const tvWidget = widgetRef.current;
-    if (!tvWidget || !tvWidget.chart || !chartReadyRef.current) return;
+  const isChartReadyForPatterns = (): boolean => (
+    chartReadyRef.current && dataLoadedRef.current && visibleRangeSetRef.current
+  );
+
+  const updateVisibleRange = (): void => {
+    const tvWidget = widgetRef.current as { chart: () => { setVisibleRange: (range: { from: number; to: number }) => void } };
+    if (!tvWidget?.chart || !chartReadyRef.current) return;
 
     const chart = tvWidget.chart();
     
@@ -96,6 +98,12 @@ export const TVChartContainer: React.FC<TVChartProps> = (props: DefaultChartProp
       from: fromTime,
       to: toTime
     });
+
+    visibleRangeSetRef.current = true;
+
+    if (isChartReadyForPatterns()) {
+      updateChartPatterns();
+    }
   };
 
   // Function to update chart indicators
@@ -127,11 +135,15 @@ export const TVChartContainer: React.FC<TVChartProps> = (props: DefaultChartProp
     }
   };
 
-  const updateChartPatterns = () => {
+  const updateChartPatterns = (): void => {
     const tvWidget = widgetRef.current;
-    if (!tvWidget || !tvWidget.chart || !chartReadyRef.current) return;
+    if (!tvWidget?.chart || !isChartReadyForPatterns()) {
+      console.log('[updateChartPatterns]: Chart not ready for patterns yet');
+      return;
+    }
 
     const chart = tvWidget.chart();
+    console.log('[updateChartPatterns]: Applying patterns to chart');
 
     // Clear existing patterns first
     chart.removeAllShapes();
@@ -144,36 +156,32 @@ export const TVChartContainer: React.FC<TVChartProps> = (props: DefaultChartProp
             return;
           }
 
-          const points = pattern.points.map(([time, price]: any) => {
-            if (typeof time !== 'number' || typeof price !== 'number') {
-              throw new Error(`Invalid coordinates: [${time}, ${price}]`);
-            }
-            // Ensure timestamp is in seconds for TradingView
-            return { 
-              time: normalizeTimestamp(time), 
-              price 
-            };
-          });
+          // get properly constructed points [{time, price}]
+          const points = getPoints(pattern);
 
           const functionName = getChartPatternFunction(pattern);
-          const patternShape = pattern.shape === 'Triangle_Symbol'
-            ? (pattern.direction === 'up' ? 'Triangle_Symbol_up' : 'Triangle_Symbol_down')
-            : pattern.shape;
+          const patternShape = getPatternShape(pattern);
 
           const shapeProperties = {
             shape: getShapeMap[patternShape],
+            zOrder: "top",
+            text: pattern.label,
+            filled: true,
             overrides: {
               linecolor: colorMap[pattern.color] || pattern.color,
-              color: colorMap[pattern.color] || pattern.color,
+              bold: patternShape === "label" ? true : false,
+              color: "black",
               linestyle: pattern.dotted ? 1 : 0,
-              linewidth: patternShape === 'Horizontal_Line'? 0.5 : pattern.dotted ? 3 : 5,
-              size: 50
+              linewidth: patternShape === "Horizontal_Line" || patternShape === "Rectangle" ? 1 : pattern.dotted ? 3 : 5,
+              textColor: patternShape === "Rectangle" ? "white" : colorMap[pattern.color] || pattern.color,
+              textcolor: colorMap[pattern.color] || pattern.color,
+              showLabel: true,
+              backgroundColor: colorMap[pattern.color] || pattern.color,
+              drawBorder: true,
+              fixedSize: false,
+              fillBackground: true
             }
           };
-          // for the text to show
-          if (pattern.label) {
-            shapeProperties['text'] = pattern.label;
-          }
 
           if (functionName === 'createShape') {
             chart.createShape(
@@ -201,21 +209,54 @@ export const TVChartContainer: React.FC<TVChartProps> = (props: DefaultChartProp
         }
       });
     }
-  }
 
-  // Main effect for chart initialization
+    console.log('[updateChartPatterns]: Patterns applied successfully');
+  };
+
+  const setupChartEventListeners = (tvWidget: any): void => {
+    const chart = tvWidget.chart();
+
+    chart.onDataLoaded().subscribe(null, () => {
+      console.log('[onDataLoaded]: Chart data has been loaded');
+      dataLoadedRef.current = true;
+      
+      if (isChartReadyForPatterns() && !patternsAppliedRef.current) {
+        updateChartPatterns();
+      }
+    });
+
+    chart.onSymbolChanged().subscribe(null, () => {
+      console.log('[onSymbolChanged]: Symbol has changed');
+      dataLoadedRef.current = false;
+      visibleRangeSetRef.current = false;
+      patternsAppliedRef.current = false; // Reset patterns flag when symbol changes
+    });
+  };
+
+  useEffect(() => {
+    // Always update to latest chartId
+    actualChartIdRef.current = props.chartId;
+  }, [props.chartId]);
+
   useEffect(() => {
     if (!chartContainerRef.current) return;
+
+    // Only create widget when we have the correct chartId
+    if (actualChartIdRef.current !== props.chartId) {
+      return;
+    }
   
     const datafeed = new Datafeed({
+      chartId: actualChartIdRef.current,
       description: defaultProps.description,
       symbol: defaultProps.symbol,
       interval: defaultProps.interval,
       symbol_type: defaultProps.symbol_type,
       theme: defaultProps.theme,
       exchange: defaultProps.exchange,
-      from_date: props.date_from, // Pass from_date from props
-      to_date: props.date_to     // Pass to_date from props
+      from_date: props.date_from,
+      to_date: props.date_to,
+      dispatch,
     });
   
     const widgetOptions = {
@@ -228,7 +269,7 @@ export const TVChartContainer: React.FC<TVChartProps> = (props: DefaultChartProp
       symbol_type: defaultProps.symbol_type,
       description: defaultProps.description,
       locale: getLanguageFromURL() || 'en',
-      timezone: 'Etc/UTC', // Force UTC timezone
+      timezone: 'Etc/UTC',
       enabled_features: [
         'study_templates',
         'create_volume_indicator_by_default',
@@ -268,7 +309,7 @@ export const TVChartContainer: React.FC<TVChartProps> = (props: DefaultChartProp
         "paneProperties.background": props.theme === 'dark' ? "#131722" : "#ffffff",
         "paneProperties.vertGridProperties.color": props.theme === 'dark' ? "#363c4e" : "#f0f3fa",
         "paneProperties.horzGridProperties.color": props.theme === 'dark' ? "#363c4e" : "#f0f3fa",
-        'timeScale.timezone': 'Etc/UTC' // Ensure UTC timezone
+        'timeScale.timezone': 'Etc/UTC'
       },
       toolbar_bg: props.theme === 'dark' ? "#131722" : "#ffffff",
       timeframes: [
@@ -298,50 +339,56 @@ export const TVChartContainer: React.FC<TVChartProps> = (props: DefaultChartProp
     const tvWidget = new window.TradingView.widget(widgetOptions);
     widgetRef.current = tvWidget;
 
-    // Add this in the onChartReady callback
-    tvWidget.onChartReady(async () => {
+    tvWidget.onChartReady(() => {
+      console.log('[onChartReady]: Chart is ready');
       chartReadyRef.current = true;
       
-      // Update visible range
+      setupChartEventListeners(tvWidget);
       updateVisibleRange();
   
-      // Existing indicator setup
-      // Volume indicator should be there by default
-      tvWidget.chart().createStudy("Volume", false, false, undefined, { "showLabelsOnPriceScale": true });
-
-      // Apply initial indicators
+      tvWidget.chart().createStudy('Volume', false, false, undefined, { showLabelsOnPriceScale: true });
       updateChartIndicators();
-
-      // Apply initial patterns - delay to ensure chart is fully loaded
-      setTimeout(() => {
-        updateChartPatterns();
-      }, 1500);
     });
 
-    // Cleanup on unmount
     return () => {
+      // Enhanced cleanup
       chartReadyRef.current = false;
-      if (widgetRef.current !== null) {
+      dataLoadedRef.current = false;
+      visibleRangeSetRef.current = false;
+      patternsAppliedRef.current = false;
+      
+      if (widgetRef.current) {
         widgetRef.current.remove();
         widgetRef.current = null;
       }
+      
+      // Clear any existing chart container content
+      if (chartContainerRef.current) {
+        chartContainerRef.current.innerHTML = '';
+      }
     };
-  }, [props.symbol, props.interval, props.theme]);
+  }, [props.chartId, props.symbol, props.interval, props.theme, defaultProps, dispatch]);
 
   // Add this new effect to handle date range updates
   useEffect(() => {
-    updateVisibleRange();
+    if (chartReadyRef.current) {
+      visibleRangeSetRef.current = false;
+      updateVisibleRange();
+    }
   }, [props.date_from, props.date_to]);
 
   // Effect to handle indicator updates
   useEffect(() => {
-    updateChartIndicators();
+    if (chartReadyRef.current) {
+      updateChartIndicators();
+    }
   }, [props.indicators]);
 
+  // Effect to handle chart pattern updates - only when patterns prop changes
   useEffect(() => {
-    setTimeout(() => {
+    if (isChartReadyForPatterns()) {
       updateChartPatterns();
-    }, 1500);
+    }
   }, [props.chartPatterns]);
 
   useEffect(() => {

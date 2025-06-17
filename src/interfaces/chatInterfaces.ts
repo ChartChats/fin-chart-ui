@@ -28,5 +28,6 @@ export interface ChatWidgetProps {
 export interface ChatProps {
   id?: string;
   title?: string;
+  createdAt?: string;
   messages?: any[];
 }

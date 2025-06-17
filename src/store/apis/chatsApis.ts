@@ -95,9 +95,8 @@ export const chatsApi = createApi({
       invalidatesTags: ['Chats']
     }),
 
-    createChat: builder.mutation<Chat, void>({
-      queryFn: async (_, { dispatch }) => {
-        const chatId = uuidv4();
+    createChat: builder.mutation<Chat, string>({
+      queryFn: async (chatId, { dispatch }) => {
         try {
           const response = await axios.post(`/user/chats/${chatId}`, {
             messages: []
@@ -183,9 +182,24 @@ export const chatsApi = createApi({
             date_from = '',
             date_to = ''
           } = chartResponse.data[chartId];
-          llmMessage = `The ticker for which the below message is being asked is maybe for` +
-            `the ticker: ${symbol} on exchange: ${exchange}, having description: ${description},` +
-            `from date: ${moment.unix(date_from)} to date: ${moment.unix(date_to)}. The message is: ${llmMessage}`;
+
+          const prompt = `You are being asked a question possibly related to the following context:
+            - Ticker: ${symbol}
+            - Exchange: ${exchange}
+            - Description: ${description}
+            - Date range: from ${date_from} to ${date_to}
+
+            However, the actual message may override this context.
+
+            Important Rule:
+            If the message below mentions a ticker, exchange, description, or date range, then completely ignore the previous context and use only the information in the message.
+            If it does not mention any of these, then use the context above to interpret the message.
+
+            Always prioritize the content of the message.
+
+            Message: ${llmMessage}`;
+
+          llmMessage += prompt 
         }
         const SSE_ENDPOINT = `${process.env.BACKEND_SERVER_URL}/llm/response`;
     

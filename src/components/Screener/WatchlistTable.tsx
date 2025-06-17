@@ -6,11 +6,27 @@ import {
   Space, 
   Popconfirm,
 } from 'antd';
+
 import {
   PlusOutlined,
   DeleteOutlined,
   MoreOutlined,
 } from '@ant-design/icons';
+
+import {
+  defaultFields,
+  availableCustomFields,
+  defaultSelectedCustomFields
+} from '@/utils/AppConstants';
+
+import {
+  renderChangeValue
+} from '@/utils/JSXUtils';
+
+import {
+  formatValue
+} from '@/utils/AppUtils';
+
 import Sortable from 'sortablejs';
 import { WatchlistTableProps } from "@/interfaces/screenerInterfaces";
 import SymbolSearchModal from "@/components/Screener/SymbolSearchModal";
@@ -22,16 +38,73 @@ const WatchlistTable = (props: WatchlistTableProps) => {
     watchlistData,
     onRemoveFromWatchlist,
     isDarkTheme,
-    columns
   } = props;
 
   const [selectedRowKeys, setSelectedRowKeys] = useState<string[]>([]);
   const [dataSource, setDataSource] = useState(watchlistData);
   const [isModalVisible, setIsModalVisible] = useState(false);
+  const [selectedCustomFields, setSelectedCustomFields] = useState(defaultSelectedCustomFields);
   
   const tableRef = useRef<HTMLDivElement>(null);
   const sortableRef = useRef<Sortable | null>(null);
   const tableBodyRef = useRef<HTMLElement | null>(null);
+
+  const columns = [
+    {
+      title: 'Stock',
+      dataIndex: 'symbol',
+      key: 'stock',
+      fixed: true as const,
+      width: 120,
+      render: (stock: string) => (
+        <Text strong style={{ color: isDarkTheme ? '#ffffff' : '#000000' }}>
+          { stock }
+        </Text>
+      )
+    },
+    {
+      title: 'Exchange',
+      dataIndex: 'exchange',
+      key: 'exchange',
+      fixed: true as const,
+      width: 100,
+      render: (exchange: string) => (
+        <Text strong style={{ color: isDarkTheme ? '#ffffff' : '#000000' }}>
+          {	exchange }
+        </Text>
+      )
+    },
+    ...defaultFields.map(field => ({
+      title: field.title,
+      dataIndex: field.key,
+      key: field.key,
+      width: 100,
+      render: (value) => {
+        if (field.type === 'change' || field.type === 'percentage') {
+          return renderChangeValue(value, field.type, isDarkTheme);
+        }
+        return (
+          <span style={{ color: isDarkTheme ? '#d9d9d9' : '#666666' }}>
+            {formatValue(value, field.type)}
+          </span>
+        );
+      }
+    })),
+    ...selectedCustomFields.map(fieldKey => {
+      const field = availableCustomFields.find(f => f.key === fieldKey);
+      return {
+        title: field.title,
+        dataIndex: field.key,
+        key: field.key,
+        width: 120,
+        render: (value) => (
+          <span style={{ color: isDarkTheme ? '#d9d9d9' : '#666666' }}>
+            { formatValue(value, field.type)  }
+          </span>
+        )
+      };
+    })
+  ];
 
   // Helper function to generate key from symbol and exchange
   const generateRowKey = (symbol: string, exchange: string) => {
@@ -125,7 +198,7 @@ const WatchlistTable = (props: WatchlistTableProps) => {
       title: '',
       key: 'drag',
       width: 40,
-      fixed: 'left',
+      fixed: 'left' as const,
       render: () => (
         <span className="drag-handle" style={{ cursor: 'move' }}>
           <MoreOutlined style={{ color: '#999' }} />
@@ -134,7 +207,7 @@ const WatchlistTable = (props: WatchlistTableProps) => {
     },
     ...columns.map((col, index) => ({
       ...col,
-      fixed: index === 0 ? 'left' : false,
+      fixed: index === 0 ? ('left' as const) : false,
       width: col.width || (
         col.key === 'stock' ? 200 :
         col.key === 'ticker' ? 100 :

@@ -12,6 +12,14 @@ export interface ScreenerData {
   createdAt: string;
   updatedAt: string;
   id?: string;
+  total?: number;
+  available_exchanges?: string[];
+  applied_filters?: {
+    search?: string;
+    sort_field?: string;
+    sort_order?: string;
+    exchange_filter?: string;
+  };
 }
 
 export interface FieldConfig {
@@ -25,15 +33,11 @@ export interface WatchlistTableProps {
   watchlistData: any[];
   onRemoveFromWatchlist: (keys: string[]) => void;
   isDarkTheme: boolean;
-  columns: any[];
 }
 
 export interface ScreenerDashboardProps {
   screeners: any[];
   loadingStates: Record<string, boolean>;
-  columns: any[];
-  fieldConfigMenu: any;
-  getTimeDifference: (screener: any) => string;
   isDarkTheme: boolean;
   onRetry: (screenerId: string) => void;
   onDelete: (screenerId: string) => void;
@@ -62,4 +66,37 @@ export interface ScreenerTickerProps {
   volume: number;
   rsi: number;
   macd: number;
+}
+
+export interface EnhancedColumnType {
+  title: string;
+  dataIndex: string;
+  key: string;
+  width?: number;
+  fixed?: 'left' | 'right';
+  sortable?: boolean;
+  filterable?: boolean;
+  render?: (value: any, record: any, index: number) => React.ReactNode;
+  sorter?: boolean;
+  sortOrder?: 'ascend' | 'descend' | null;
+}
+
+export interface Screener {
+  id: string;
+  query: string;
+  total?: number;
+  createdAt?: string;
+  updatedAt?: string;
+  records?: any[];
+}
+
+export interface ScreenerCardProps {
+  screener: Screener;
+  isExpanded: boolean;
+  onToggleExpand: (id: string, isExpanded: boolean) => void;
+  onRetry: (id: string) => void;
+  onDelete: (id: string) => void;
+  onAddToWatchlist: (rows: any[]) => void;
+  loadingStates: Record<string, boolean>;
+  isDarkTheme: boolean;
 }

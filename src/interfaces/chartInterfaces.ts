@@ -17,6 +17,7 @@ export interface ChartPatternProps {
 }
 
 export interface TVChartProps {
+  chartId?: string;
   symbol?: string;
   interval?: string;
   exchange?: string;
@@ -28,6 +29,7 @@ export interface TVChartProps {
 }
 
 export interface DefaultChartProps {
+  chartId?: string;
   indicators: IndicatorProps[];
   chartPatterns: ChartPatternProps[];
   interval: string;
@@ -79,6 +81,7 @@ export interface PeriodParams {
 }
 
 export interface DatafeedProps {
+  chartId: string;
   symbol: string;
   description: string;
   symbol_type: string;
@@ -87,6 +90,7 @@ export interface DatafeedProps {
   theme: string;
   from_date?: string; // Add from_date parameter
   to_date?: string;   // Add to_date parameter
+  dispatch?: any; // Add dispatch
 }
 
 export interface SymbolItem {

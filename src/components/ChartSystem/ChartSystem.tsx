@@ -1,8 +1,7 @@
 import React, { useState, useEffect } from "react";
 import { Tabs, Button, Modal } from "antd";
 import { ChartDisplay } from "./ChartDisplay";
-import { useIsMobile } from "@/hooks/use-mobile";
-import { useGetChartsQuery, useAddChartMutation, useRemoveChartMutation, useDeleteChatMutation } from "@/store";
+import { useGetChartsQuery, useAddChartMutation, useRemoveChartMutation, useDeleteChatMutation, useCreateChatMutation } from "@/store";
 import { ChartData } from "@/interfaces/chartInterfaces";
 import { v4 as uuid4 } from 'uuid';
 
@@ -15,80 +14,62 @@ export function ChartSystem() {
   const [removeChart] = useRemoveChartMutation();
   const [addChart] = useAddChartMutation();
   const [deleteChat] = useDeleteChatMutation();
+  const [createChat] = useCreateChatMutation();
   
   const [activeChartId, setActiveChartId] = useState<string | null>(() => {
     const stored = localStorage.getItem('activeChartId');
-    if (stored && activeCharts.some(chart => chart.id === stored)) {
-      return stored;
-    }
-    return activeCharts.length > 0 ? activeCharts[0]?.id : null;
+    return stored || null;
   });
 
-  const isMobile = useIsMobile();
-
-  // Update active chart id when charts change
+  // Update active chart id when charts change and sync with chat
   useEffect(() => {
-    if (activeCharts.length === 0) {
-      setActiveChartId(null);
-      localStorage.removeItem('activeChartId');
-    } else if (!activeChartId || !activeCharts.find(chart => chart.id === activeChartId)) {
-      const newActiveId = activeCharts[0]?.id;
-      setActiveChartId(newActiveId);
-      if (newActiveId) {
-        localStorage.setItem('activeChartId', newActiveId);
-      }
-    }
-  }, [activeCharts]);
-
-  // Save activeChartId to localStorage when it changes and dispatch event for chat sync
-  useEffect(() => {
-    if (activeChartId) {
-      localStorage.setItem('activeChartId', activeChartId);
-      // Dispatch event to sync with chat
-      window.dispatchEvent(new CustomEvent('chartSelected', { 
-        detail: { chartId: activeChartId } 
-      }));
-    } else {
-      localStorage.removeItem('activeChartId');
-    }
-  }, [activeChartId]);
-
-  // Listen for new chart events
-  useEffect(() => {
-    const handleNewChart = (event: CustomEvent) => {
-      const { chartId } = event.detail;
-      if (chartId) {
-        setActiveChartId(chartId);
-        // Ensure charts section is visible
-        const visibleSections = JSON.parse(localStorage.getItem('visibleSections') || '{}');
-        if (!visibleSections.charts) {
-          visibleSections.charts = true;
-          localStorage.setItem('visibleSections', JSON.stringify(visibleSections));
-          window.dispatchEvent(new CustomEvent('sectionVisibilityChanged', { detail: { charts: true } }));
+    if (!isLoading) {
+      if (activeCharts.length === 0) {
+        setActiveChartId(null);
+        localStorage.removeItem('activeChartId');
+        window.dispatchEvent(new CustomEvent('chartSelected', { detail: { chartId: null } }));
+      } else {
+        const stored = localStorage.getItem('activeChartId');
+        const validStoredChart = stored && activeCharts.some(chart => chart.id === stored);
+        
+        if (!activeChartId || !activeCharts.find(chart => chart.id === activeChartId)) {
+          if (validStoredChart) {
+            // Restore the stored active chart and sync with chat
+            setActiveChartId(stored);
+            window.dispatchEvent(new CustomEvent('chartSelected', { detail: { chartId: stored } }));
+          } else {
+            // Default to the most recently added chart (first in the array)
+            const newActiveId = activeCharts[0]?.id;
+            setActiveChartId(newActiveId);
+            if (newActiveId) {
+              localStorage.setItem('activeChartId', newActiveId);
+              window.dispatchEvent(new CustomEvent('chartSelected', { detail: { chartId: newActiveId } }));
+            }
+          }
+        } else {
+          // Ensure chat is synced even if chart is already selected
+          window.dispatchEvent(new CustomEvent('chartSelected', { detail: { chartId: activeChartId } }));
         }
       }
-    };
+    }
+  }, [activeCharts, isLoading]);
 
-    const handleChatSelected = (event: CustomEvent) => {
-      const { chatId } = event.detail;
-      if (chatId && activeCharts.some(chart => chart.id === chatId)) {
-        setActiveChartId(chatId);
-      }
-    };
-
-    window.addEventListener('newChartGenerated', handleNewChart as EventListener);
-    window.addEventListener('chatSelected', handleChatSelected as EventListener);
-    return () => {
-      window.removeEventListener('newChartGenerated', handleNewChart as EventListener);
-      window.removeEventListener('chatSelected', handleChatSelected as EventListener);
-    };
-  }, [activeCharts]);
+  // Handle chart selection changes
+  const handleChartChange = (chartId: string) => {
+    setActiveChartId(chartId);
+    localStorage.setItem('activeChartId', chartId);
+    // Immediately sync with chat
+    window.dispatchEvent(new CustomEvent('chartSelected', { 
+      detail: { chartId } 
+    }));
+  };
 
   const activeChart = activeCharts.find(chart => chart.id === activeChartId);
   
   const handleAddNewChart = async () => {
+    const newChartId = uuid4();
     const newChart: ChartData = {
-      id: uuid4(),
+      id: newChartId,
       type: "line",
       title: `#${activeCharts.length + 1}`,
       symbol: 'AAPL',
@@ -101,8 +82,19 @@ export function ChartSystem() {
     };
     
     try {
-      const result = await addChart(newChart).unwrap();
-      setActiveChartId(result.id);
+      // Create both chart and corresponding chat
+      await Promise.all([
+        addChart(newChart).unwrap(),
+        createChat(newChartId).unwrap()
+      ]);
+      
+      // Set this chart as active immediately and sync with chat
+      handleChartChange(newChartId);
+      
+      // Fire a custom event to notify any listeners of the new chart
+      window.dispatchEvent(new CustomEvent('newChartGenerated', {
+        detail: { chartId: newChartId }
+      }));
     } catch (error) {
       console.error('Failed to add chart:', error);
     }
@@ -110,24 +102,29 @@ export function ChartSystem() {
 
   const handleRemoveChart = async (chartId: string) => {
     try {
-      // Show confirmation modal if chart has an associated chat (since chart ID = chat ID)
       Modal.confirm({
-        title: 'Remove Chart',
-        content: 'This chart was generated from a chat. If you remove this chart, the associated chat will also be removed. Do you want to continue?',
-        okText: 'Yes, remove both',
+        title: 'Remove Chart and Chat',
+        content: 'Are you sure you want to remove this chart? The corresponding chat will also be deleted. This action cannot be undone.',
+        okText: 'Remove',
         cancelText: 'Cancel',
         onOk: async () => {
+          // Delete both chart and corresponding chat
           await Promise.all([
             removeChart(chartId).unwrap(),
             deleteChat(chartId).unwrap()
           ]);
           
+          // Find the next chart to activate (prefer the one to the left)
+          const currentIndex = activeCharts.findIndex(chart => chart.id === chartId);
+          const remainingCharts = activeCharts.filter(chart => chart.id !== chartId);
+          
           if (chartId === activeChartId) {
-            const remainingCharts = activeCharts.filter(chart => chart.id !== chartId);
-            if (remainingCharts.length > 0) {
-              setActiveChartId(remainingCharts[0].id);
+            // Try to select the chart to the left, if not available, try the one to the right
+            const nextChart = remainingCharts[currentIndex - 1] || remainingCharts[currentIndex] || remainingCharts[0];
+            if (nextChart) {
+              handleChartChange(nextChart.id);
             } else {
-              setActiveChartId(null);
+              handleChartChange(null);
             }
           }
         }
@@ -139,40 +136,51 @@ export function ChartSystem() {
 
   return (
     <div className="flex flex-col h-full bg-background overflow-hidden custom-tabs">
-      <Tabs
-        type="editable-card"
-        activeKey={activeChartId || undefined}
-        onChange={setActiveChartId}
-        onEdit={(targetKey, action) => {
-          if (action === 'add') handleAddNewChart();
-          if (action === 'remove' && typeof targetKey === 'string') {
-            handleRemoveChart(targetKey);
-          }
-        }}
-        items={activeCharts.map(chart => ({
-          key: chart.id,
-          label: chart.title || `#${activeCharts.indexOf(chart) + 1}`,
-        }))}
-        className="px-2 pt-2"
-        style={{
-          marginBottom: 0
-        }}
-        tabBarStyle={{
-          marginBottom: 0,
-          borderRadius: 0
-        }}
-        hideAdd={false}
-      />
+      <div className="flex items-center bg-background px-2 pt-2">
+        <Button
+          type="text"
+          size="small"
+          onClick={handleAddNewChart}
+          className="flex items-center gap-1 mr-2"
+        >
+          +
+        </Button>
+        <Tabs
+          type="editable-card"
+          activeKey={activeChartId || undefined}
+          onChange={handleChartChange}
+          onEdit={(targetKey, action) => {
+            if (action === 'remove' && typeof targetKey === 'string') {
+              handleRemoveChart(targetKey);
+            }
+          }}
+          items={activeCharts.map((chart, index) => ({
+            key: chart.id,
+            label: chart.title || `#${activeCharts.length - index}`,
+          })).reverse()}
+          className="flex-1"
+          style={{
+            marginBottom: 0
+          }}
+          tabBarStyle={{
+            marginBottom: 0,
+            borderRadius: 0
+          }}
+          hideAdd={true}
+        />
+      </div>
       <div className="flex-1 overflow-hidden">
-        {activeChart ? (
-          <ChartDisplay chartId={activeChartId} />
+        {activeCharts.length > 0 ? (
+          activeChart ? (
+            <ChartDisplay chartId={activeChartId} />
+          ) : null
         ) : (
           <div className="flex items-center justify-center h-full">
             <div className="text-center p-4">
               <p className="text-muted-foreground mb-2">No charts open</p>
               <Button
                 type="dashed"
-                size={isMobile ? "small" : "middle"}
+                size="middle"
                 onClick={handleAddNewChart}
                 className="flex items-center gap-1"
               >
