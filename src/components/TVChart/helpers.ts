@@ -37,7 +37,7 @@ export async function makeApiRequest(endpoint: string = '', payload: Record<stri
     return responseData;
   } catch (error: any) {
     console.error('API request failed:', error);
-    throw new Error(`API request error: ${error.message}`);
+    return [];
   }
 }
 

@@ -103,12 +103,16 @@ export function ChartSystem() {
   const handleRemoveChart = async (chartId: string) => {
     try {
       Modal.confirm({
-        title: 'Remove Chart',
-        content: 'Are you sure you want to remove this chart? This action cannot be undone.',
+        title: 'Remove Chart and Chat',
+        content: 'Are you sure you want to remove this chart? The corresponding chat will also be deleted. This action cannot be undone.',
         okText: 'Remove',
         cancelText: 'Cancel',
         onOk: async () => {
-          await removeChart(chartId).unwrap();
+          // Delete both chart and corresponding chat
+          await Promise.all([
+            removeChart(chartId).unwrap(),
+            deleteChat(chartId).unwrap()
+          ]);
           
           // Find the next chart to activate (prefer the one to the left)
           const currentIndex = activeCharts.findIndex(chart => chart.id === chartId);
@@ -166,8 +170,10 @@ export function ChartSystem() {
         />
       </div>
       <div className="flex-1 overflow-hidden">
-        {activeChart ? (
-          <ChartDisplay chartId={activeChartId} />
+        {activeCharts.length > 0 ? (
+          activeChart ? (
+            <ChartDisplay chartId={activeChartId} />
+          ) : null
         ) : (
           <div className="flex items-center justify-center h-full">
             <div className="text-center p-4">

@@ -21,6 +21,12 @@ export const getChartPatternFunction = (pattern: ChartPatternProps): string => {
   return 'createMultipointShape';
 };
 
+export const getPatternShape = (pattern: ChartPatternProps) => {
+  return pattern.shape === 'Triangle_Symbol'
+    ? (pattern.direction === 'up' ? 'Triangle_Symbol_up' : 'Triangle_Symbol_down')
+    : pattern.shape;
+}
+
 export const getShapeMap = {
   "Label": "text",
   "Circle": "circle",
@@ -67,4 +73,40 @@ export const formatValue = (value, type) => {
     case 'number': return Number(value).toFixed(2);
     default: return value;
   }
+};
+
+export const getPoints = (pattern: ChartPatternProps): {time: number, price: string}[] => {
+  // Rectangle goes with [[time1, time2], [price1, price2]]
+  // And reactangle is always a multi-shape point with 2 points
+  if (pattern.shape === "Rectangle") {
+    return [
+      {
+        time: normalizeTimestamp(pattern.points[0][0]),
+        price: pattern.points[1][0]
+      },
+      {
+        time: normalizeTimestamp(pattern.points[0][1]),
+        price: pattern.points[1][1]
+      }
+    ];
+  }
+
+  // Other points go with [time, price] format
+  return pattern.points.map(([time, price]: any) => {
+    // Ensure timestamp is in seconds for TradingView
+    return { 
+      time: normalizeTimestamp(time), 
+      price 
+    };
+  });
+};
+
+// Helper function to ensure timestamp is in seconds for TradingView
+export const normalizeTimestamp = (timestamp: number): number => {
+  // If timestamp is in milliseconds (13 digits), convert to seconds
+  if (timestamp.toString().length === 13) {
+    return Math.floor(timestamp / 1000);
+  }
+  // If already in seconds (10 digits), return as is
+  return Math.floor(timestamp);
 };

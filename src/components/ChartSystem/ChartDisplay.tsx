@@ -9,10 +9,17 @@ interface ChartDisplayProps {
 
 export const ChartDisplay = React.memo(({ chartId }: ChartDisplayProps) => {
   const { theme } = useTheme();
-  const { data: chart, isLoading } = useGetChartQuery(chartId);
+  const { data: chart, isLoading, isSuccess } = useGetChartQuery(chartId, {
+    refetchOnMountOrArgChange: true,
+    skip: !chartId
+  });
+
+  // Only proceed when we have the EXACT chart we requested
+  const hasCorrectChart = isSuccess && chart && chart.id === chartId;
+
   const themeValue = useMemo(() => theme === 'dark' ? 'dark' : 'light', [theme]);
 
-  if (isLoading || !chart) return null;
+  if (isLoading || !hasCorrectChart) return null;
 
   console.log(chart);
 
@@ -20,6 +27,7 @@ export const ChartDisplay = React.memo(({ chartId }: ChartDisplayProps) => {
     <div className="w-full h-full flex flex-col">
       <div className="flex-1 min-h-0 chart-container">
         <TVChartContainer
+          key={chartId}
           chartId={chartId}
           symbol={chart.symbol}
           exchange={chart.exchange}

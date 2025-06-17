@@ -20,14 +20,17 @@ import {
 
 import { subscribeOnStream, unsubscribeFromStream } from './streaming.js';
 
-// Global cache to store data for each symbol and resolution
-const dataCache = new Map<string, Bar[]>();
-
 export default class Datafeed {
   private props: DatafeedProps;
+  private dataCache: Map<string, Bar[]> = new Map();
+
+  get chartId() {
+    return this.props.chartId;
+  }
 
   constructor(props: DatafeedProps) {
     this.props = props;
+    this.dataCache = new Map();
   }
 
   onReady = async (callback: (configuration: any) => void): Promise<void> => {
@@ -137,7 +140,7 @@ export default class Datafeed {
       // But based on the symbol, we provide them the best possible solution from symbol_search endpoint
       if (this.props.dispatch) {
         const chartData: Partial<ChartData> = {
-          id: this.props.chartId,
+          id: this.chartId,
           type: selectedType || 'crypto',
           title: selectedDescription || `${selectedExchange}:${selectedSymbol}`,
           symbol: selectedSymbol,
@@ -147,7 +150,7 @@ export default class Datafeed {
         };
 
         this.props.dispatch(chartApi.endpoints.updateChart.initiate({
-          id: this.props.chartId,
+          id: this.chartId,
           data: chartData
         }));
       }
@@ -168,7 +171,7 @@ export default class Datafeed {
     onErrorCallback: (error: any) => void
   ): Promise<void> => {
     const { from, to, firstDataRequest } = periodParams;
-    console.log('[getBars]: Method call', symbolInfo, resolution, from, to);
+    console.log('[getBars]: Method call', symbolInfo, resolution, from, to, 'firstDataRequest:', firstDataRequest);
   
     const intervalMap: { [key: string]: string } = {
       '1': '1min',
@@ -186,13 +189,13 @@ export default class Datafeed {
     const parsedSymbol = parseFullSymbol(symbolInfo.name);
     const { exchange, symbol } = parsedSymbol;
     const interval = intervalMap[resolution] || '1day';
-    const cacheKey = `${exchange}:${symbol}-${interval}`;
+    const cacheKey = `${this.props.chartId}-${exchange}:${symbol}-${interval}`;
     const fromMs = from * 1000;
     const toMs = to * 1000;
     const BARS_LIMIT = 5000;
   
     try {
-      let storedBars = dataCache.get(cacheKey) || [];
+      let storedBars = this.dataCache.get(cacheKey) || [];
       const cacheFirst = storedBars[0]?.time;
       const cacheLast = storedBars[storedBars.length - 1]?.time;
 
@@ -235,11 +238,11 @@ export default class Datafeed {
         });
         
         if (!response?.values?.length) {
-          console.log('[getBars]: Empty response');
+          console.log('[getBars]: No data available from API');
           onHistoryCallback([], { noData: true });
           return;
         }
-  
+
         const newBars = response.values.map((item: any) => ({
           time: new Date(item.datetime).getTime(),
           low: parseFloat(item.low),
@@ -257,7 +260,7 @@ export default class Datafeed {
           return acc;
         }, []).sort((a, b) => a.time - b.time);
   
-        dataCache.set(cacheKey, merged);
+        this.dataCache.set(cacheKey, merged);
         storedBars = merged;
       }
   

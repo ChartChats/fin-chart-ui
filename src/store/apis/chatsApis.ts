@@ -95,7 +95,7 @@ export const chatsApi = createApi({
       invalidatesTags: ['Chats']
     }),
 
-    createChat: builder.mutation<Chat, void>({
+    createChat: builder.mutation<Chat, string>({
       queryFn: async (chatId, { dispatch }) => {
         try {
           const response = await axios.post(`/user/chats/${chatId}`, {

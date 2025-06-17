@@ -46,7 +46,10 @@ export const chartApi = createApi({
           };
         }
       },
-      providesTags: ['Charts']
+      keepUnusedDataFor: 0, // Immediately remove from cache when unused
+      providesTags: (result, error, chartId) => result
+        ? [{ type: 'Charts', id: chartId }]
+        : ['Charts'],
     }),
 
     getCharts: builder.query<ChartData[], void>({
